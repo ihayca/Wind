@@ -1,0 +1,614 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+
+  'type' 'flex'
+  'cellHeight' 80   
+  'options' { 
+      'scheme' 'CHARTANA'
+            'timeZone' 'AUTO'      
+         }
+		 
+  'vars' {
+      'plant' 'Usak'
+      'plant2' 'Usak'
+      
+      'TurbineId' '1'
+      'TurbineId2' '2'
+ 
+      'VariableId' 'ACTIVE_POWER'
+      'VariableId2' 'WIND_SPEED'
+      'VariableId3' 'WIND_DIRECTION'
+      'VariableId4' 'PLC_STATUS'
+      'condition1' ">"
+      'condition2' ">"
+      'condition3' ">"
+      'condition4' ">"
+      
+      'value1' '0'
+      'value2' '0'
+      'value3' '0'
+      'value4' '0'
+      
+      'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
+          'endDate' NOW //1658913094000000 //604800000000
+
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+}
+          
+          
+  'tiles' [
+    
+		
+
+{                
+        'title' 'Plant 1'                
+        'x' 0 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine 1'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+ 
+	
+	{                
+        'title' 'Start Date'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 6 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                         
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+    
+    {                
+        'title' 'Plant 2'                
+        'x' 8 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+           [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                      
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant2' 'TurbineId2' ] 'selector' 'plant2' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine 2'                
+        'x' 10 'y' 0 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET LSORT 'listOfTurbines' STORE                    
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId2' 'plant2' ] 'selector' 'TurbineId2' }  ] // Event definition                    
+            }                
+        %>            
+    }  
+    
+
+   	{                
+        'title' 'Variable 1'                
+        'x' 0 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            {                        
+                'data' $listOfVariables                        
+                'globalParams' { 'input' { 'value' $VariableId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'VariableId' ] 'selector' 'VariableId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+       	{                
+        'title' 'Condition 1'                
+        'x' 2 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            {                        
+                'data'  [ "<" ">" "=" "<=" ">=" ]                          
+                'globalParams' { 'input' { 'value' $condition1 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'condition1' ] 'selector' 'condition1' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+           	{                
+        'title' 'Value 1'                
+        'x' 3 'y' 1 'w' 1 'h' 1              
+        'type' 'input:text'                
+        'macro' <%                     
+            {                        
+                'data' $value1                       
+                'globalParams' { 'input' { 'value' $value1 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'value1' ] 'selector' 'value1' }  ] // Event definition                    
+            }                
+        %>            
+    }
+    
+      	{                
+        'title' 'Variable 2'                
+        'x' 4 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            {                        
+                'data' $listOfVariables                        
+                'globalParams' { 'input' { 'value' $VariableId2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'VariableId2' ] 'selector' 'VariableId2' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+       	{                
+        'title' 'Condition 2'                
+        'x' 5 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            {                        
+                'data' [ "<" ">" "=" "<=" ">=" ]                       
+                'globalParams' { 'input' { 'value' $condition2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'condition2' ] 'selector' 'condition2' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+           	{                
+        'title' 'Value 2'                
+        'x' 6 'y' 1 'w' 1 'h' 1              
+        'type' 'input:text'                
+        'macro' <%                     
+            {                        
+                'data' $value2                       
+                'globalParams' { 'input' { 'value' $value2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'value2' ] 'selector' 'value2' }  ] // Event definition                    
+            }                
+        %>            
+    }
+    
+          	{                
+        'title' 'Variable 3'                
+        'x' 7 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            {                        
+                'data' $listOfVariables                        
+                'globalParams' { 'input' { 'value' $VariableId3 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'VariableId3' ] 'selector' 'VariableId3' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+       	{                
+        'title' 'Condition 3'                
+        'x' 8 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            {                        
+                'data' [ "<" ">" "=" "<=" ">=" ]                        
+                'globalParams' { 'input' { 'value' $condition3 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'condition3' ] 'selector' 'condition3' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+           	{                
+        'title' 'Value 3'                
+        'x' 9 'y' 1 'w' 1 'h' 1              
+        'type' 'input:text'                
+        'macro' <%                     
+            {                        
+                'data' $value3                       
+                'globalParams' { 'input' { 'value' $value3 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'value3' ] 'selector' 'value3' }  ] // Event definition                    
+            }                
+        %>            
+    }
+              	{                
+        'title' 'Variable 4'                
+        'x' 10 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            {                        
+                'data' $listOfVariables                        
+                'globalParams' { 'input' { 'value' $VariableId4 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'VariableId4' ] 'selector' 'VariableId4' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+        
+             	{                
+        'title' 'Condition 4'                
+        'x' 11 'y' 1 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            {                        
+                'data' [ "<" ">" "=" "<=" ">=" ]                        
+                'globalParams' { 'input' { 'value' $condition4 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'condition4' ] 'selector' 'condition4' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+           	{                
+        'title' 'Value 4'                
+        'x' 12 'y' 1 'w' 1 'h' 1              
+        'type' 'input:text'                
+        'macro' <%                     
+            {                        
+                'data' $value4                       
+                'globalParams' { 'input' { 'value' $value4 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'value4' ] 'selector' 'value4' }  ] // Event definition                    
+            }                
+        %>            
+    }
+
+    	{
+    
+    'options' { 
+                'eventHandler' 'type=(variable|zoom|focus),tag=(chart1|TurbineId|plant|startDate|endDate|VariableId|VariableId2|VariableId3|VariableId4|condition1|condition2|condition3|condition4|value1|value2|value3|value4)'
+                'showLegend' true
+                'showRangeSelector' true
+
+				}
+    'x' 0 'y' 2 'w' 6 'h' 4
+    'type' 'scatter' 'macro' <%
+    
+     [ $myreadtoken $VariableId { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'data1' STORE
+	   $data1 { '.app' '' '.uuid' '' } RELABEL 'data1' STORE //relabel the atributes
+    
+     [ $myreadtoken $VariableId2 { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'data2' STORE
+	   $data2 { '.app' '' '.uuid' '' } RELABEL 'data2' STORE //relabel the atributes
+	   
+     [ $myreadtoken $VariableId3 { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+      ] FETCH 'data3' STORE
+	   $data3 { '.app' '' '.uuid' '' } RELABEL 'data3' STORE //relabel the atributes
+	   
+     [ $myreadtoken $VariableId4 { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+      ] FETCH 'data4' STORE
+	   $data4 { '.app' '' '.uuid' '' } RELABEL 'data4' STORE //relabel the atributes
+	   
+	   
+
+	  //$data1 0 GET $value1 TOLONG <
+	  $condition1 'v1' STORE
+	  $v1
+	  <% $v1 "<" == %> <% $data1 0 GET $value1 TOLONG < %>
+	  <% $v1 ">" == %> <% $data1 0 GET $value1 TOLONG > %>
+	  <% $v1 "=" == %> <% $data1 0 GET $value1 TOLONG == %>
+	  <% $v1 "<=" == %> <% $data1 0 GET $value1 TOLONG <= %>
+	  <% $data1 0 GET $value1 TOLONG >= %>	  
+	  4 SWITCH 'data1' STORE
+	  
+	  $condition2 'v2' STORE
+	  $v2
+	  <% $v2 "<" == %> <% $data2 0 GET $value2 TOLONG < %>
+	  <% $v2 ">" == %> <% $data2 0 GET $value2 TOLONG > %>
+	  <% $v2 "=" == %> <% $data2 0 GET $value2 TOLONG == %>
+	  <% $v2 "<=" == %> <% $data2 0 GET $value2 TOLONG <= %>
+	  <% $data2 0 GET $value2 TOLONG >= %>	  
+	  4 SWITCH 'data2' STORE
+	  
+	  $condition3 'v3' STORE
+	  $v3
+	  <% $v3 "<" == %> <% $data3 0 GET $value3 TOLONG < %>
+	  <% $v3 ">" == %> <% $data3 0 GET $value3 TOLONG > %>
+	  <% $v3 "=" == %> <% $data3 0 GET $value3 TOLONG == %>
+	  <% $v3 "<=" == %> <% $data3 0 GET $value3 TOLONG <= %>
+	  <% $data3 0 GET $value3 TOLONG >= %>	  
+	  4 SWITCH 'data3' STORE
+	  
+	  $condition4 'v4' STORE
+	  $v4
+	  <% $v4 "<" == %> <% $data4 0 GET $value4 TOLONG < %>
+	  <% $v4 ">" == %> <% $data4 0 GET $value4 TOLONG > %>
+	  <% $v4 "=" == %> <% $data4 0 GET $value4 TOLONG == %>
+	  <% $v4 "<=" == %> <% $data4 0 GET $value4 TOLONG <= %>
+	  <% $data4 0 GET $value4 TOLONG >= %>	  
+	  4 SWITCH 'data4' STORE
+	  
+	 //$data1
+	 //$data2
+	 //$data3
+	 
+	  { 'data' [ $data1 $data2 $data3 $data4 ] 'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } { 'yAxis' 3 } ] 
+        'events' [
+        { 'tags' [ 'chart2' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'chart2' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+      
+      }
+     
+      %>
+    }
+    
+        	{
+    
+    'options' { 
+                'eventHandler' 'type=(variable|zoom|focus),tag=(chart2|TurbineId2|plant2|startDate|endDate|VariableId|VariableId2|VariableId3|VariableId4|condition1|condition2|condition3|condition4|value1|value2|value3|value4)'
+                'showLegend' true
+                                'showRangeSelector' true
+
+				}
+    'x' 6 'y' 2 'w' 6 'h' 4
+    'type' 'scatter' 'macro' <%
+    
+
+    [ $myreadtoken $VariableId { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'data1' STORE
+	   $data1 { '.app' '' '.uuid' '' } RELABEL 'data1' STORE //relabel the atributes
+    
+     [ $myreadtoken $VariableId2 { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'data2' STORE
+	   $data2 { '.app' '' '.uuid' '' } RELABEL 'data2' STORE //relabel the atributes
+	   
+     [ $myreadtoken $VariableId3 { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+      ] FETCH 'data3' STORE
+	   $data3 { '.app' '' '.uuid' '' } RELABEL 'data3' STORE //relabel the atributes
+     [ $myreadtoken $VariableId4 { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+      ] FETCH 'data4' STORE
+	   $data4 { '.app' '' '.uuid' '' } RELABEL 'data4' STORE //relabel the atributes	   
+
+	  //$data1 0 GET $value1 TOLONG <
+	  $condition1 'v1' STORE
+	  $v1
+	  <% $v1 "<" == %> <% $data1 0 GET $value1 TOLONG < %>
+	  <% $v1 ">" == %> <% $data1 0 GET $value1 TOLONG > %>
+	  <% $v1 "=" == %> <% $data1 0 GET $value1 TOLONG == %>
+	  <% $v1 "<=" == %> <% $data1 0 GET $value1 TOLONG <= %>
+	  <% $data1 0 GET $value1 TOLONG >= %>	  
+	  4 SWITCH 'data1' STORE
+	  
+	  	  $condition2 'v2' STORE
+	  $v2
+	  <% $v2 "<" == %> <% $data2 0 GET $value2 TOLONG < %>
+	  <% $v2 ">" == %> <% $data2 0 GET $value2 TOLONG > %>
+	  <% $v2 "=" == %> <% $data2 0 GET $value2 TOLONG == %>
+	  <% $v2 "<=" == %> <% $data2 0 GET $value2 TOLONG <= %>
+	  <% $data2 0 GET $value2 TOLONG >= %>	  
+	  4 SWITCH 'data2' STORE
+	  
+	  	  $condition3 'v3' STORE
+	  $v3
+	  <% $v3 "<" == %> <% $data3 0 GET $value3 TOLONG < %>
+	  <% $v3 ">" == %> <% $data3 0 GET $value3 TOLONG > %>
+	  <% $v3 "=" == %> <% $data3 0 GET $value3 TOLONG == %>
+	  <% $v3 "<=" == %> <% $data3 0 GET $value3 TOLONG <= %>
+	  <% $data3 0 GET $value3 TOLONG >= %>	  
+	  4 SWITCH 'data3' STORE
+	  	  	  $condition4 'v4' STORE
+	  $v4
+	  <% $v4 "<" == %> <% $data4 0 GET $value4 TOLONG < %>
+	  <% $v4 ">" == %> <% $data4 0 GET $value4 TOLONG > %>
+	  <% $v4 "=" == %> <% $data4 0 GET $value4 TOLONG == %>
+	  <% $v4 "<=" == %> <% $data4 0 GET $value4 TOLONG <= %>
+	  <% $data4 0 GET $value4 TOLONG >= %>	  
+	  4 SWITCH 'data4' STORE
+	  
+	  { 'data' [ $data1 $data2 $data3 $data4 ] 'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } { 'yAxis' 3 } ] 
+        'events' [
+        { 'tags' [ 'chart1' ] 'type' 'zoom'  } // send zoom event on channel "chart1"
+        { 'tags' [ 'chart1' ] 'type' 'focus' } // send focus event on channel "chart1"
+      ]
+      
+      
+      }
+      %>
+    }
+    
+			
+					{
+    'title' 'Power Curve Comparison'
+    'options' { 
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|TurbineId2|plant2|startDate|endDate)' //TurbineId,plant,startDate,endDate,VariableId
+                'showLegend' true
+
+				}
+    'x' 0 'y' 6 'w' 6 'h' 8
+    'type' 'scatter' 
+    'macro' <%
+
+    
+[ $myreadtoken '~ACTIVE_POWER.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH 'pow' STORE
+
+	   
+     [ $myreadtoken '~WIND_SPEED.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'wind' STORE
+		
+		$wind <% 100 * %> FOREACH 'wind' STORE
+		$plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
+
+		$wind VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$pow VALUES FLATTEN // values
+		MAKEGTS
+		$turbine_name1 RENAME 'data_merge' STORE
+		[ $data_merge bucketizer.mean 0 0 50 ] BUCKETIZE 'mean_spline' STORE
+
+
+[ $myreadtoken '~ACTIVE_POWER.*' { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH 'pow2' STORE
+
+	   
+     [ $myreadtoken '~WIND_POWER.*' { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'wind2' STORE
+		
+        $plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + 'turbine_name2' STORE
+		$wind2 <% 100 * %> FOREACH 'wind2' STORE
+		
+		$wind2 VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$pow2 VALUES FLATTEN // values
+		MAKEGTS
+		$turbine_name2 RENAME 'data_merge2' STORE
+		[ $data_merge2 bucketizer.mean 0 0 50 ] BUCKETIZE 'mean_spline2' STORE
+		
+
+	  //$plant 'plant' STORE
+	  $plant
+	  <% $plant "Soke" == %> <% [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+[] [] []             // latitudes longitudes and elevations
+[  0.0 7.0 53.0 123.0 208.0 309.0 427.0 567.0
+                           732.0 927.0 1149.0 1401.0 1688.0 2006.0 2348.0 2693.0 
+                           3011.0 3252.0 3388.0 3436.0 3448.0 3450.0 3450.0 
+                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 
+                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0  3450.0
+                            3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0
+                            3450.0 3450.0 ] // values
+MAKEGTS 'Specs' RENAME %>
+	  <% [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+               [] [] []             // latitudes longitudes and elevations
+               [ 0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410
+                           458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 
+                           1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0  1500.0
+                            1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0
+                            1500.0 1500.0 ] // values
+              MAKEGTS 'Specs' RENAME %>	  
+	  1 SWITCH 'turbine_type' STORE
+
+    $turbine_type $mean_spline $mean_spline2
+
+	 
+	 { 'data' [ $data_merge $mean_spline $data_merge2 $mean_spline2 $turbine_type ] 'params' [ { 'type' 'scatter' } { 'type' 'spline' }  { 'type' 'scatter' } { 'type' 'spline' }  { 'type' 'spline' } ]  'globalParams' {  'timeMode' 'timestamp' } } 
+	
+      %>
+	  
+	  
+    }
+    // All variables comparison table (mean, tbd)
+
+    {
+      'type' 'tabular' 'x' 6 'y' 6 'w' 6 'h' 8
+      'title' 'All Variables Means'
+      'options' { 'eventHandler' 'type=(variable),tag=(|startDate|endDate|TurbineId|TurbineId2|plant|plant2)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+         [ $myreadtoken '~.*' { 'plant' $plant 'TurbineId' $TurbineId } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+      ] FETCH 'data' STORE
+	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
+  
+     [ $data bucketizer.mean 0 0 1 ] BUCKETIZE 'databucket' STORE
+
+          [ $myreadtoken '~.*' { 'plant' $plant2 'TurbineId' $TurbineId2 } 
+        $startDate TOSTRING 
+         $endDate TOSTRING
+      ] FETCH 'data2' STORE
+	   $data2 { '.app' '' '.uuid' '' } RELABEL 'data2' STORE //relabel the atributes --- this is the data to train on
+  
+     [ $data2 bucketizer.mean 0 0 1 ] BUCKETIZE 'databucket2' STORE
+
+     $plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
+     $plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + 'turbine_name2' STORE
+        {
+          'columns' [ 'Variable' $turbine_name1 $turbine_name2 ]
+          'rows' [
+   $data SIZE 1 - 'numVariables' STORE
+    0 $numVariables
+    <% 'i' STORE
+   [ $databucket $i GET NAME $databucket $i GET VALUES 0 GET $databucket2 $i GET VALUES 0 GET ]
+      
+    %> FOR          
+          ]
+        } 
+        'values' STORE
+    
+        { 'data' $values 
+          'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+    
+	
+  ]
+
+
+}
+

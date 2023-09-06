@@ -1,0 +1,367 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+
+ 
+  'cellHeight' 100   
+  'options' { 
+    'showErrors' true  'eventHandler' 'type=popup,tag=dashboard'
+      'scheme' 'CHARTANA'
+            'timeZone' 'Europe/Istanbul'      
+         }
+		 
+  'vars' {
+      'plant' 'Usak'
+      
+      'TurbineId' '1'
+      'status_event' 'Turbine-1 | 2022-07-01T00:00:00 | 10m0s'
+      'status_code' ''
+      'comp_code' ''
+      
+      'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
+      'endDate' NOW //1658913094000000   //604800000000
+
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+      'writetoken' 'VLMWo2sl_0j0ml.KHLpaa7lr14wLn_fAffcp.pGvv989p7MFOcyR9yF.nOrDqB2jgNR1iN93WCYav0lawYiRt0zuNWvDJhBeaVEzlGwVNBeIlRkhkv1OpUYymIiUZYMR' 
+   }
+          
+          
+  'tiles' [
+    
+		
+
+{                
+        'title' 'Plant'                
+        'x' 0 'y' 0 'w' 1 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine 1'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'hidden' // 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                     
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+ 
+	
+	{                
+        'title' 'Start Date'                
+        'x' 1 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 3 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                      
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+
+     {
+      'type' 'input:list' 'x' 5 'y' 0  'w' 2 'h' 1
+      'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|TurbineId2|plant|plant2)'
+                  // suscribe to events
+      
+      }
+      'title' 'Select Stoppage'
+      'macro' <% 
+
+[ $myreadtoken '~ACTIVE_POWER.*' {  'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH 'y' STORE
+   
+[ $y 0.0 mapper.le 0 0 0 ] MAP 'zero_power' STORE
+   
+$zero_power SIZE 1 - 'numTurbines' STORE 
+[] 'outageList' STORE
+
+0 $numTurbines <% 
+'i' STORE 
+$zero_power $i GET LABELS 'TurbineId' GET 'Turbine' STORE 
+
+    $zero_power $i GET 
+    20 m    // Consider 10 minutes quiet periods
+    2      // Consider blocks with at least 2 values
+    'stop'   // Add a label 'occ' with the sequence number of each block
+    TIMESPLIT FLATTEN 
+    RANGECOMPACT 'outages' STORE //keep first and lasttick
+    $outages SIZE 1 - 'numOutage' STORE //number of stops
+      
+    0 $numOutage <% 'j' STORE
+      $outages $j GET LASTTICK $outages $j GET FIRSTTICK  - HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE
+      'Turbine-' $Turbine + 'turbine' STORE
+      $outages $j GET FIRSTTICK ISO8601 '.' SPLIT 0 GET 'Z' '' 2 JOIN 'starttick' STORE
+      $outages $j GET LASTTICK ISO8601 '.' SPLIT 0 GET 'Z' '' 2 JOIN  'endtick' STORE
+     [ $turbine ' | ' $starttick ' | ' $duration ' | ' $endtick + + + + + + ] 'row' STORE
+     $outageList [ $row ] APPEND 'outageList' STORE
+
+     %> FOR
+
+    %> FOR
+
+        
+        {
+        'events' [ { 'tags' 'status_event' 'type' 'variable' 'selector' 'status_event' } ]
+        'globalParams' { 'status_event' { 'value' $status_event } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $outageList FLATTEN
+      } %>
+    }
+
+     {
+      'type' 'input:list' 'x' 7 'y' 0  'w' 2 'h' 1
+      'options' { 'eventHandler' 'type=(variable),tag=(TurbineId|plant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Select Status'
+      'macro' <% 
+
+        [  'Manufacturer' 'Buyer' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'status_code' 'type' 'variable' 'selector' 'status_code' } ]
+        'globalParams' { 'input' { 'value' $status_code } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+        {
+      'type' 'input:list' 'x' 9 'y' 0  'w' 2 'h' 1
+      'options' { 'eventHandler' 'type=(variable),tag=(TurbineId|plant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Component'
+      'macro' <% 
+
+        [  'Manufacturer' 'Buyer' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'comp_code' 'type' 'variable' 'selector' 'comp_code' } ]
+        'globalParams' { 'input' { 'value' $comp_code } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+      {
+      'type' 'button' 
+      'title' 'Update Status'
+      'options' {
+        'button' { 'label' 'Submit' }
+        'eventHandler' 'type=variable,tag=(status_event|status_code|plant|TurbineId)'
+      }
+      'x' 11 'y' 0  'w' 1 'h' 1
+      'macro' <% 
+        { 
+          'data' <%  
+            $status_event '|' SPLIT 'outageList' STORE
+            $outageList 0 GET '-' SPLIT 1 GET TRIM 'TurbineId' STORE //turbineid to update
+            $outageList 1 GET TRIM 'starttick' STORE //startdate to update
+            //$starttick TOTIMESTAMP 'starttick' STORE
+            $outageList 2 GET 'duration' STORE //duration to delete and update
+            $outageList -1 GET TRIM 'endtick' STORE
+            //$endtick TOTIMESTAMP 'endtick' STORE
+
+            //$starttick $duration + 'endtick' STORE
+
+            [ $myreadtoken '~ACTIVE_POWER.*' {  'plant' $plant 'TurbineId' $TurbineId } 
+             $starttick $endtick  ] FETCH 'y' STORE
+            // $y 0 GET LOCSTRINGS 0 GET HHCODE-> 'lat' STORE 'lon' STORE //lat-lon of turbine to be updated
+            $y 0 GET NAME 'newname' STORE  
+            $y { 'status' $status_code } RELABEL $newname RENAME 'new_data' STORE
+             $newname '{' + 'plant=' + $plant ',' + 'TurbineId=' $TurbineId + '}' + + + 'gtsselector' STORE
+             //$writetoken $gtsselector $starttick $endtick MAXLONG DELETE
+             //$new_data $writetoken UPDATE
+
+              { 'data' $new_data 
+              'events' [ { 'type' 'variable' 'tags' [  'plant' ] 'value' $plant }  ] 
+              }
+          %>
+        }
+      %>
+    }
+
+ {
+      'type' 'tabular' 'x' 0 'y' 1 'w' 6 'h' 8
+      'title' 'Stoppages Table'
+      'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|plant)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+[ $myreadtoken '~WIND_SPEED.*' { 'plant' $plant } 
+   $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'x' STORE
+
+[ $myreadtoken '~PLC_STATUS.*' {  'plant' $plant } 
+    $startDate TOSTRING 
+	  $endDate TOSTRING
+  ] FETCH 'data' STORE
+	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes
+  [ $data bucketizer.first 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'bucket' STORE
+
+   [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
+   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Start' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
+   //[ $bucket 1 mapper.eq 0 0 0 ] MAP 'Standby' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standby' STORE
+   //[ $bucket 2 mapper.eq 0 0 0 ] MAP 'Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'production' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Error' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'error' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Service' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
+   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Low Temp.' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'lowtemp' STORE
+   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'High Wind' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'highwind' STORE
+    
+   [ $offline $start $error $service $lowtemp $highwind ] NONEMPTY 'gtslist' STORE //get only gts with values
+   
+   //$x [ SWAP [] { 'TurbineId' $gtslist 75 GET LABELS 'TurbineId' GET } filter.bylabels ] FILTER 0 GET $gtslist 75 GET FIRSTTICK $gtslist 75 GET LASTTICK TIMECLIP [ SWAP [] bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 
+
+   //STOP
+
+    $gtslist SIZE 1 - 'gtslen' STORE
+   [] 'rows' STORE
+
+   0 $gtslen <% 'i' STORE  // 1 for start
+
+         $gtslist $i GET NAME 'name' STORE
+         $gtslist $i GET LABELS 'TurbineId' GET 'turbine' STORE
+         $gtslist $i GET TICKLIST 'ticks' STORE
+         $ticks 0 GET 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+
+         $ticks SIZE 1 > //condition ifte start
+         <% $ticks 1 GET $ticks 0 GET - 'dur' STORE $dur HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+            $x [ SWAP [] { 'TurbineId' $turbine } filter.bylabels ] FILTER 0 GET $ticks 1 GET $dur 10 * TIMECLIP 'x_clipped' STORE
+            [ $x_clipped [] bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'act_wind' STORE
+
+
+             
+         
+         %>
+         <% 'PT2M' DURATION HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE
+             0 'act_wind' STORE
+             0 'loss' STORE 
+         %>
+         IFTE //condition ifte end
+
+        $rows [ [ $turbine $start $duration $act_wind $name ] ] APPEND 'rows' STORE
+    
+      
+     %> FOR  // 1 for end
+
+             {
+          'columns' [ 'TurbineId' 'Start Date' 'Duration' 'Avg.Wind' 'Status' ]
+          'rows' [
+ 0 $rows SIZE 1 -
+<%
+  'i' STORE
+  $rows $i GET
+
+  //[ $variableName $firstvalue $lastvalue $diff ]
+%> FOR         
+          ]
+        } 
+        'values' STORE
+    
+        { 'data' $values 
+          'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+
+ {
+      'type' 'profile' 'x' 6 'y' 1 'w' 6 'h' 8
+      'title' 'Stoppages Profile Chart'
+      'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|plant)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+[ $myreadtoken '~ACTIVE_POWER.*' {  'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH 'y' STORE
+
+	   
+  [ $myreadtoken '~WIND_SPEED.*' { 'plant' $plant } 
+   $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'x' STORE
+
+
+    [ $y 0.0 mapper.le 0 0 0 ] MAP 'zero_power' STORE
+    //[ $x 2.5 mapper.gt 0 0 0 ] MAP 'wind' STORE
+
+$zero_power SIZE 1 - 'numTurbines' STORE 
+
+
+0 $numTurbines <% 
+  'i' STORE 
+  $zero_power $i GET LABELS 'TurbineId' GET 'Turbine' STORE 
+
+  NEWGTS 'Turbine-' $Turbine TOSTRING + RENAME 'g' STORE
+  
+   $zero_power $i GET 
+    20 m    // Consider 10 minutes quiet periods
+    2      // Consider blocks with at least 2 values
+    'stop'   // Add a label 'occ' with the sequence number of each block
+    TIMESPLIT FLATTEN 
+    RANGECOMPACT 'outages' STORE //keep first and lasttick
+    $outages SIZE 1 - 'numOutage' STORE //number of stops
+
+  0 $numOutage <% 'j' STORE 
+  $outages $j GET LASTTICK $outages $j GET FIRSTTICK - 'duration' STORE
+  $g $outages $j GET FIRSTTICK NaN NaN NaN $duration ADDVALUE DROP %> FOR
+
+$g %> FOR SORT 
+      %>
+    }
+	
+  ]
+
+
+}

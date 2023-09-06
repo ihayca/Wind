@@ -1,0 +1,143 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+
+ 
+  'cellHeight' 100   
+  'options' { 
+    'showErrors' true  'eventHandler' 'type=popup,tag=dashboard'
+      'scheme' 'CHARTANA'
+            'timeZone' 'AUTO'      
+         }
+		 
+  'vars' {
+      'plant' 'Yalova'
+      
+      'TurbineId' '1'
+
+      
+      'startDate' 1658308294000000   
+      'endDate' 1658913094000000   //604800000000
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+          }
+          
+          
+  'tiles' [
+    
+		
+
+{                
+        'title' 'Plant 1'                
+        'x' 0 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine 1'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+ 
+	
+	{                
+        'title' 'Start Date'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 1 w - NOW  ]                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 6 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW  ]                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+
+ {
+      'type' 'tabular' 'x' 0 'y' 1 'w' 12 'h' 8
+      'title' 'Time Difference Table'
+      'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|TurbineId2|plant|plant2)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+         [ $myreadtoken '~.*' { 'plant' $plant 'TurbineId' $TurbineId } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+      ] FETCH 'data' STORE
+	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
+      $data FIRSTTICK 'firsttick' STORE
+      $data LASTTICK 'lasttick' STORE
+      $data $firsttick 1 TIMECLIP 'first_values' STORE
+      $data $lasttick 1 TIMECLIP 'last_values' STORE
+
+      $first_values SIZE 1 - 'length_of_variables' STORE
+
+             {
+          'columns' [ 'Variable' 'First Value' 'Last Value' 'Difference' ]
+          'rows' [
+ 0 $length_of_variables
+<%
+  'i' STORE
+  $last_values $i GET NAME 'variableName' STORE
+  $first_values $i GET VALUES 0 GET 'firstvalue' STORE
+  $last_values $i GET VALUES 0 GET 'lastvalue' STORE
+  $lastvalue $firstvalue - 'diff' STORE
+  [ $variableName $firstvalue $lastvalue $diff ]
+%> FOR         
+          ]
+        } 
+        'values' STORE
+    
+        { 'data' $values 
+          'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+
+	
+  ]
+
+
+}
+

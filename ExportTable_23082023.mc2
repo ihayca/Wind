@@ -1,0 +1,409 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+
+ 
+  'cellHeight' 100   
+  'options' { 
+    'showErrors' true  
+
+      'scheme' 'CHARTANA'
+       'timeZone' 'Europe/Istanbul'       
+         }
+		 
+  'vars' {
+      'plant' 'Usak'
+      'TurbineId' '1'
+      'checkBoxList' [ 'ACTIVE_POWER' 'WIND_SPEED' ]
+      'bucketsize' '10 m'
+      'valuetype' 'Mean'
+      'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
+      'endDate' NOW //1658913094000000   //604800000000
+
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+          }
+          
+          
+  'tiles' [
+    
+	
+{                
+        'title' 'Plant'                
+        'x' 0 'y' 0 'w' 1 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine'                
+        'x' 1 'y' 0 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET LSORT 'listOfTurbines' STORE                    
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+ 
+	
+	{                
+        'title' 'Start Date'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                       
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+            	{                
+        'title' 'Bucket Size'                
+        'x' 6 'y' 0 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ '10 m' '30 m' '1 h' '1 d' '1 w' ] 'listOfSpeed' STORE                    
+            {                        
+                'data' $listOfSpeed                        
+                'globalParams' { 'input' { 'value' $bucketsize } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'bucketsize' ] 'selector' 'bucketsize' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+       {                
+        'title' 'Value Type'                
+        'x' 7 'y' 0 'w' 1 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ 'Value' 'Mean' ] 'listOfType' STORE                    
+            {                        
+                'data' $listOfType                       
+                'globalParams' { 'input' { 'value' $valuetype } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'valuetype' ] 'selector' 'valuetype' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+
+    {
+      'type' 'input:multi-cb' 
+      'x' 10 'w' 2 'h' 7 'y' 0  // try input:autocomplete if the choice list is too big
+      'title' 'Select sensors'
+      'options' { 'input' { 'showButton' true 'showFilter' true } }
+      'macro' <% 
+        
+        [ $myreadtoken '~.*' { 'type' 'Wind' 'TurbineId' '~.*' } ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE 
+        
+        {
+        'events' [ { 'tags' 'input' 'type' 'variable' 'selector' 'checkBoxList' } ]
+        'globalParams' { 'input' { 'value' $checkBoxList } } // you must define  'checkBoxList' [ 'sensor 1' 'sensor 3' ] into dashboard 'vars' too.
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $listOfVariables // [ 1 100 <% TOSTRING 'sensor ' SWAP + %> FOR ]
+      } %>
+    }
+
+ {
+      'type' 'tabular' 'x' 0 'y' 1 'w' 10 'h' 4
+      'title' 'Report Table'
+      'options' { 'eventHandler' 'type=(variable),tag=(endDate|startDate|TurbineId|plant|input|bucketsize|valuetype)'
+                  // suscribe to events
+        //'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+           
+           $checkBoxList '|' JOIN 'VariableId' STORE
+           '~(' $VariableId + ')' + 'VariableId' STORE
+
+         [ $myreadtoken $VariableId { 'plant' $plant 'TurbineId' $TurbineId } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+         ] FETCH 'data' STORE
+	    $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
+      $data LASTTICK  "lastBucket" STORE
+      //10 m "bucketSpan" STORE // 1 minute
+      $bucketsize ' ' SPLIT 1 GET 'select' STORE
+      <% $select 'h' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG h 'bucketSpan' STORE %>
+      <% $select 'd' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG d 'bucketSpan' STORE %>
+      <% $select 'w' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG w 'bucketSpan' STORE %>
+      <% $bucketsize ' ' SPLIT 0 GET TOLONG m 'bucketSpan' STORE %>
+      3 SWITCH
+      
+      $data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      <% $valuetype 'Value' == %> <% [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE %>
+      <% [ $data bucketizer.mean $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE %>
+      1 SWITCH
+      
+      $bucket SIZE 1 - 'bucketlen' STORE
+      [] 'newbucket' STORE
+      0 $bucketlen <% 'i' STORE
+      <% $bucket $i GET NAME 'ACTIVE_POWER' == %> <% $bucket $i GET [ NaN NaN NaN 0 ] FILLVALUE SORT 'filled' STORE  %> // if active power in the list
+      <% $bucket $i GET NAME 'PLC_STATUS' == %> <% $bucket $i GET filler.trend FILL SORT 'filled' STORE  %> // if active power in the list
+      <% $bucket $i GET FILLPREVIOUS FILLNEXT SORT 'filled' STORE %> 1 SWITCH
+      $newbucket [ $filled ] APPEND
+      %> FOR
+      
+      $newbucket 'bucket' STORE
+      //$bucket FILLPREVIOUS FILLNEXT SORT 'bucket' STORE // fill all empty values
+      //$bucket [ NaN NaN NaN 0 ] FILLVALUE SORT 'bucket' STORE // fill all empty ticks with zero
+
+      $bucket SIZE 1 - 'length_of_variables' STORE //store number of variables selected
+
+      [ 'Date' ] 'columns' STORE  //first column is date others are variable names and appended with for
+      [] 'rows' STORE  //rows to append
+      [] 'values' STORE //values for cells
+      $bucket 0 GET TICKLIST 'datetime' STORE //datetime column
+
+      0 $length_of_variables <% 'i' STORE
+      $columns [ $bucket $i GET NAME ] APPEND 'columns' STORE //add variable name to columns
+      $values [ $bucket $i GET VALUES ] APPEND 'values' STORE
+    
+      %> FOR
+
+      // put everything in a table format for rows
+      $datetime SIZE 1 - 'len' STORE 
+      0 $len <% 'i' STORE 
+      $datetime $i GET 'Europe/Istanbul' ISO8601 'T' SPLIT ' ' JOIN '.' SPLIT 0 GET 'time' STORE 
+
+      $rows [ [ $time 0 $length_of_variables <% 'j' STORE 
+      $values $j GET $i GET %> FOR ] ] APPEND 'rows' STORE
+      %> FOR
+
+             {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+    
+        { 'data' $values 
+          'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      'filterable' true
+      'draggable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+{
+      'type' 'line' 'x' 0 'y' 5 'w' 10 'h' 3
+      'title' 'Report Table'
+      'options' { 'eventHandler' 'type=(variable),tag=(endDate|startDate|TurbineId|plant|input|bucketsize|valuetype)'
+                  // suscribe to events
+        //'tabular' { 'fixedWidth' true }
+        'showRangeSelector' true
+      }
+      'macro' <%
+           
+           $checkBoxList '|' JOIN 'VariableId' STORE
+           '~(' $VariableId + ')' + 'VariableId' STORE
+
+         [ $myreadtoken $VariableId { 'plant' $plant 'TurbineId' $TurbineId } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+         ] FETCH 'data' STORE
+	    $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
+      $data LASTTICK  "lastBucket" STORE
+      //10 m "bucketSpan" STORE // 1 minute
+      $bucketsize ' ' SPLIT 1 GET 'select' STORE
+      <% $select 'h' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG h 'bucketSpan' STORE %>
+      <% $select 'd' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG d 'bucketSpan' STORE %>
+      <% $select 'w' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG w 'bucketSpan' STORE %>
+      <% $bucketsize ' ' SPLIT 0 GET TOLONG m 'bucketSpan' STORE %>
+      3 SWITCH
+      
+      $data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      <% $valuetype 'Value' == %> <% [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE %>
+      <% [ $data bucketizer.mean $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE %>
+      1 SWITCH
+      
+      $bucket SIZE 1 - 'bucketlen' STORE
+      [] 'newbucket' STORE
+      0 $bucketlen <% 'i' STORE
+      <% $bucket $i GET NAME 'ACTIVE_POWER' == %> <% $bucket $i GET [ NaN NaN NaN 0 ] FILLVALUE SORT 'filled' STORE  %> // if active power not in the list
+      <% $bucket $i GET FILLPREVIOUS FILLNEXT SORT 'filled' STORE %> 1 SWITCH
+      $newbucket [ $filled ] APPEND
+      %> FOR
+      
+      $newbucket 'bucket' STORE
+      //$bucket FILLPREVIOUS FILLNEXT SORT 'bucket' STORE // fill all empty values
+      //$bucket [ NaN NaN NaN 0 ] FILLVALUE SORT 'bucket' STORE // fill all empty ticks with zero
+
+      $bucket SIZE 1 - 'length_of_variables' STORE //store number of variables selected
+
+      [ 'Date' ] 'columns' STORE  //first column is date others are variable names and appended with for
+      [] 'rows' STORE  //rows to append
+      [] 'values' STORE //values for cells
+      $bucket 0 GET TICKLIST 'datetime' STORE //datetime column
+
+      0 $length_of_variables <% 'i' STORE
+      $columns [ $bucket $i GET NAME ] APPEND 'columns' STORE //add variable name to columns
+      $values [ $bucket $i GET VALUES ] APPEND 'values' STORE
+    
+      %> FOR
+
+      // put everything in a table format for rows
+      $datetime SIZE 1 - 'len' STORE 
+      0 $len <% 'i' STORE 
+      $datetime $i GET 'Europe/Istanbul' ISO8601 'T' SPLIT ' ' JOIN '.' SPLIT 0 GET 'time' STORE 
+
+      $rows [ [ $time 0 $length_of_variables <% 'j' STORE 
+      $values $j GET $i GET %> FOR ] ] APPEND 'rows' STORE
+      %> FOR
+
+             {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+    
+        { 'data' $bucket 
+
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+
+
+     {
+         'type' 'display'
+         'title' 'Export Table'
+         'options' { 'eventHandler' 'type=(variable),tag=(endDate|startDate|TurbineId|plant|input|bucketsize|valuetype)'
+         }
+         'w' 2 'h' 1 'x' 8 'y' 0
+         'macro' <% 
+          '%0A' 'eol' STORE
+          '%2C' 'comma' STORE
+          '' 'row' STORE
+          '' 'header' STORE
+
+              $checkBoxList '|' JOIN 'VariableId' STORE
+           '~(' $VariableId + ')' + 'VariableId' STORE
+
+         [ $myreadtoken $VariableId { 'plant' $plant 'TurbineId' $TurbineId } 
+         $startDate TOSTRING 
+         $endDate TOSTRING
+         ] FETCH 'data' STORE
+	    $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
+      $data LASTTICK  "lastBucket" STORE
+      //10 m "bucketSpan" STORE // 1 minute
+      $bucketsize ' ' SPLIT 1 GET 'select' STORE
+      <% $select 'h' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG h 'bucketSpan' STORE %>
+      <% $select 'd' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG d 'bucketSpan' STORE %>
+      <% $select 'w' == %> <% $bucketsize ' ' SPLIT 0 GET TOLONG w 'bucketSpan' STORE %>
+      <% $bucketsize ' ' SPLIT 0 GET TOLONG m 'bucketSpan' STORE %>
+      3 SWITCH
+      
+      $data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      <% $valuetype 'Value' == %> <% [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE %>
+      <% [ $data bucketizer.mean $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE %>
+      1 SWITCH
+      
+      $bucket SIZE 1 - 'bucketlen' STORE
+      [] 'newbucket' STORE
+      0 $bucketlen <% 'i' STORE
+      <% $bucket $i GET NAME 'ACTIVE_POWER' == %> <% $bucket $i GET [ NaN NaN NaN 0 ] FILLVALUE SORT 'filled' STORE  %> // if active power not in the list
+      <% $bucket $i GET FILLPREVIOUS FILLNEXT SORT 'filled' STORE %> 1 SWITCH
+      $newbucket [ $filled ] APPEND
+      %> FOR
+      
+      $newbucket 'bucket' STORE
+      //$bucket FILLPREVIOUS FILLNEXT SORT 'bucket' STORE //fill empty values
+      //$bucket [ NaN NaN NaN 0 ] FILLVALUE SORT 'bucket' STORE // fill all empty ticks with zero
+
+      $bucket SIZE 1 - 'length_of_variables' STORE //store number of variables selected
+
+      [ 'Date' ] 'columns' STORE  //first column is date others are variable names and appended with for
+      [] 'rows' STORE  //rows to append
+      [] 'values' STORE //values for cells
+      $bucket 0 GET TICKLIST 'datetime' STORE //datetime column
+
+      0 $length_of_variables <% 'i' STORE
+      $columns [ $bucket $i GET NAME ] APPEND 'columns' STORE //add variable name to columns
+      $values [ $bucket $i GET VALUES ] APPEND 'values' STORE
+    
+      %> FOR
+
+      // put everything in a table format for rows
+      $datetime SIZE 1 - 'len' STORE 
+      0 $len <% 'i' STORE 
+      $datetime $i GET 'Europe/Istanbul' ISO8601 'T' SPLIT ' ' JOIN '.' SPLIT 0 GET 'time' STORE 
+
+      $rows [ [ $time 0 $length_of_variables <% 'j' STORE 
+      $values $j GET $i GET %> FOR ] ] APPEND 'rows' STORE
+      %> FOR
+
+      //constructor
+
+      0 $columns SIZE 1 - <% 'i' STORE
+      $header $columns $i GET + $comma + 'header' STORE
+       %> FOR
+       $header $eol + 'header' STORE
+
+        0 $rows SIZE 1 - 
+<%
+  'i' STORE
+  $rows $i GET 'vars' STORE
+  0 $columns SIZE 1 - <% 'j' STORE
+   $row $vars $j GET TOSTRING + $comma + 'row' STORE
+   %> FOR
+  $row $eol + 'row' STORE
+%> FOR   
+        
+'<' 'html' + '>' +
+'<' + 'body>' +
+'<' + 'a download="ExportTable.csv" id="download-link" href="data:text/csv;charset=utf-8,' + 
+$header + //headers
+
+$row +
+      
+
+'" target="_blank"><button>Download</button><' + '/a>' +
+'<' + '/body>' +
+'<' + '/html>' + 'data' STORE
+
+{ 'data' $data }          
+           %>
+       }
+
+
+	
+  ]
+
+
+}
