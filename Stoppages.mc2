@@ -229,65 +229,129 @@ $zero_power $i GET LABELS 'TurbineId' GET 'Turbine' STORE
         'tabular' { 'fixedWidth' true }
       }
       'macro' <%
+
 [ $myreadtoken '~WIND_SPEED.*' { 'plant' $plant } 
    $startDate TOSTRING 
 	 $endDate TOSTRING
       ] FETCH 'x' STORE
 
 [ $myreadtoken '~PLC_STATUS.*' {  'plant' $plant } 
-    $startDate TOSTRING 
-	  $endDate TOSTRING
+         $startDate 1 d - TOSTRING
+         $endDate TOSTRING 
   ] FETCH 'data' STORE
 	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes
-  [ $data bucketizer.first 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'bucket' STORE
 
-   [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
-   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Start' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
-   //[ $bucket 1 mapper.eq 0 0 0 ] MAP 'Standby' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standby' STORE
-   //[ $bucket 2 mapper.eq 0 0 0 ] MAP 'Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'production' STORE
-   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Error' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'error' STORE
-   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Service' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
-   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Low Temp.' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'lowtemp' STORE
-   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'High Wind' RENAME  2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'highwind' STORE
+  [ $data bucketizer.last 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'allbucket' STORE
+  [] 'rows' STORE
+  [] 'newlist' STORE 
+
+  0 $allbucket SIZE 1 - <% 'b' STORE
     
-   [ $offline $start $error $service $lowtemp $highwind ] NONEMPTY 'gtslist' STORE //get only gts with values
+    $allbucket $b GET 'bucket' STORE
+
+    $bucket LABELS 'TurbineId' GET 'turbine' STORE 
+    $bucket LABELS 'manufacturer' GET 'manu' STORE
+
+    <% $manu 'Goldwind' == %> <% 
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standstill' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Starting' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
+   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
+   [ $bucket 7 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
+
+  [ $initial $stop $standstill $start $service ] 'gtslist' STORE
+   $gtslist SIZE 1 - 'gtslen' STORE
+
+  0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE //start of for
+    $status 0 GET NAME 'status_name' STORE
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE  //start of for
+                      $ticks 0 GET 'start' STORE //start of status
+                      $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+
+                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'duration' STORE %>
+                      <% 'PT2M' DURATION 'duration' STORE %> 1 SWITCH
+
+                      $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
+                      $duration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+                      $rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE 
+
+
+                    %> FOR  //end of for
+              %> 
+              <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP 
+                   $status 0 GET FIRSTTICK 'start' STORE
+                   $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+                   0 'duration' STORE
+                   $duration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+                   //$rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE  
+                   
+                   %> 1 SWITCH
+
+    $newlist [ $g ]  APPEND 'newlist' STORE
+   %> FOR 
+ 
+ 
+    %>
+    //here we start for sinovel
+    <%
+
+   [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
+   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Start' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Standby' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standby' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'production' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Error' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'error' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
+   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Low Temp.' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'lowtemp' STORE
+   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'High Wind' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'highwind' STORE
+    
+  [ $offline $start $error $service $lowtemp $highwind ] 'gtslist' STORE // put status gts for turbine in a list
+   $gtslist SIZE 1 - 'gtslen' STORE
+   // 
+
+   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE //start of for
+    $status 0 GET NAME 'status_name' STORE
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE  //start of for
+                      $ticks 0 GET 'start' STORE //start of status
+                      $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+
+                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'duration' STORE %>
+                      <% 'PT2M' DURATION 'duration' STORE %> 1 SWITCH
+
+                      $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
+                      $duration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+                      $rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE 
+
+
+                    %> FOR  //end of for
+              %> 
+              <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP 
+                   $status 0 GET FIRSTTICK 'start' STORE
+                   $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+                   0 'duration' STORE
+                   $duration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+                   //$rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE  
+                   
+                   %> 1 SWITCH
+
+    $newlist [ $g ]  APPEND 'newlist' STORE // put start dates and durations to turbine status list
+
+    
+   %> FOR //end of for 
+
+    %> 1 SWITCH
    
-   //$x [ SWAP [] { 'TurbineId' $gtslist 75 GET LABELS 'TurbineId' GET } filter.bylabels ] FILTER 0 GET $gtslist 75 GET FIRSTTICK $gtslist 75 GET LASTTICK TIMECLIP [ SWAP [] bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 
-
-   //STOP
-
-    $gtslist SIZE 1 - 'gtslen' STORE
-   [] 'rows' STORE
-
-   0 $gtslen <% 'i' STORE  // 1 for start
-
-         $gtslist $i GET NAME 'name' STORE
-         $gtslist $i GET LABELS 'TurbineId' GET 'turbine' STORE
-         $gtslist $i GET TICKLIST 'ticks' STORE
-         $ticks 0 GET 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
-
-         $ticks SIZE 1 > //condition ifte start
-         <% $ticks 1 GET $ticks 0 GET - 'dur' STORE $dur HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
-            $x [ SWAP [] { 'TurbineId' $turbine } filter.bylabels ] FILTER 0 GET $ticks 1 GET $dur 10 * TIMECLIP 'x_clipped' STORE
-            [ $x_clipped [] bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'act_wind' STORE
-
-
-             
-         
-         %>
-         <% 'PT2M' DURATION HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE
-             0 'act_wind' STORE
-             0 'loss' STORE 
-         %>
-         IFTE //condition ifte end
-
-        $rows [ [ $turbine $start $duration $act_wind $name ] ] APPEND 'rows' STORE
-    
-      
-     %> FOR  // 1 for end
+   
+  
+  %> FOR
 
              {
-          'columns' [ 'TurbineId' 'Start Date' 'Duration' 'Avg.Wind' 'Status' ]
+          'columns' [ 'TurbineId' 'Manufacturer' 'Start Date' 'Duration' 'Status' ]
           'rows' [
  0 $rows SIZE 1 -
 <%
