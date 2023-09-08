@@ -172,7 +172,7 @@ $zero_power $i GET LABELS 'TurbineId' GET 'Turbine' STORE
       'title' 'Component'
       'macro' <% 
 
-        [  'Manufacturer' 'Buyer' ] 'statusList' STORE
+        [  'Generator' 'Gearbox' ] 'statusList' STORE
         
         {
         'events' [ { 'tags' 'comp_code' 'type' 'variable' 'selector' 'comp_code' } ]
@@ -261,7 +261,7 @@ $zero_power $i GET LABELS 'TurbineId' GET 'Turbine' STORE
    [ $bucket 6 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
    [ $bucket 7 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
 
-  [ $initial $stop $standstill $start $service ] 'gtslist' STORE
+  [ $initial $stop $start $service ] 'gtslist' STORE
    $gtslist SIZE 1 - 'gtslen' STORE
 
   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE //start of for
