@@ -1,0 +1,234 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+
+  //'type' 'flex'
+  'cellHeight' 80   
+  'options' { 
+      'scheme' 'CHARTANA'
+            'timeZone' 'Europe/Istanbul'    
+         }
+		 
+  'vars' {
+      'plant' 'Usak'
+      'plant2' 'Yalova'
+      
+      'TurbineId' '1'
+      'TurbineId2' '2'
+ 
+      'VariableId' 'WIND_SPEED'
+      'VariableId2' 'ACTIVE_POWER'
+      'VariableId3' 'EnvTemAve'
+      'VariableId4' 'NacPosErrDemAve'
+      'condition1' ">"
+      'condition2' ">"
+      'condition3' ">"
+      'condition4' ">"
+      
+      'value1' '0'
+      'value2' '0'
+      'value3' '0'
+      'value4' '0'
+      
+      'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
+      'endDate' NOW //1658913094000000   //604800000000
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+
+          }
+          
+          
+  'tiles' [
+    
+		
+
+{                
+        'title' 'Plant'                
+        'x' 0 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine'                
+        'x' 0 'y' 1 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+           [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                  
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+    	{                
+        'title' 'X-Axis'                
+        'x' 0 'y' 2 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            {                        
+                'data' $listOfVariables                        
+                'globalParams' { 'input' { 'value' $VariableId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'VariableId' ] 'selector' 'VariableId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+    
+    
+      	{                
+        'title' 'Y-Axis'                
+        'x' 0 'y' 3 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            {                        
+                'data' $listOfVariables                        
+                'globalParams' { 'input' { 'value' $VariableId2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant'  'VariableId2' ] 'selector' 'VariableId2' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'Start Date'                
+        'x' 0 'y' 4 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                      
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 0 'y' 5 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+               'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                    
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+     
+					{
+    'title' 'X vs Y Plot'
+    'options' { 
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|VariableId|VariableId2|startDate|endDate)' //TurbineId,plant,startDate,endDate,VariableId
+                'showLegend' true
+
+				}
+    'x' 2 'y' 0 'w' 10 'h' 4
+    'type' 'scatter' 
+    'macro' <%
+
+    
+  [ $myreadtoken $VariableId2 { 'TurbineId' $TurbineId 'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH { '.app' '' '.uuid' '' 'type' '' 'manufacturer' '' } RELABEL 'y' STORE
+
+	   
+     [ $myreadtoken $VariableId { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH { '.app' '' '.uuid' '' 'type' '' 'manufacturer' '' } RELABEL 'x' STORE
+		
+		$x <% 100 * %> FOREACH 'x' STORE
+		$VariableId TOSTRING 'variable_name1' STORE
+
+    //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      1 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $x bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'x' STORE
+      [ $y bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'y' STORE
+
+		$x VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$y VALUES FLATTEN // values
+		MAKEGTS
+		$variable_name1 RENAME 'data_merge' STORE
+		//[ $data_merge bucketizer.mean 0 0 50 ] BUCKETIZE 'mean_spline' STORE
+        // $mean_spline { 'type' 'spline' } 
+
+	 
+	 { 'data' [ $data_merge  ] 'params' [ { 'type' 'scatter' } ]  'globalParams' {  'timeMode' 'timestamp' } } 
+	
+      %>
+	  
+	  
+    }
+
+    				{
+    'title' 'Time Plot'
+    'options' { 
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|VariableId|VariableId2|startDate|endDate)' //TurbineId,plant,startDate,endDate,VariableId
+                'showLegend' true
+
+				}
+    'x' 2 'y' 4 'w' 10 'h' 4
+    'type' 'line' 
+    'macro' <%
+
+    
+  [ $myreadtoken $VariableId2 { 'TurbineId' $TurbineId 'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH { '.app' '' '.uuid' '' 'type' '' 'manufacturer' '' } RELABEL 'y' STORE
+
+	   
+     [ $myreadtoken $VariableId { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH { '.app' '' '.uuid' '' 'type' '' 'manufacturer' '' } RELABEL 'x' STORE
+
+       //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      1 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $x bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'x' STORE
+      [ $y bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'y' STORE
+		
+	 
+	 { 'data' [ $x $y  ] 'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] } 
+	
+      %>
+	  
+	  
+    }
+   
+        	  
+			  
+	
+  ]
+
+
+}
+

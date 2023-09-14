@@ -433,7 +433,7 @@ $avail TODOUBLE $total TODOUBLE  / 100 * 'time_avail' STORE
      10 m "bucketSpan" STORE // 1 minute
      $inputs FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
-     [ $inputs bucketizer.median $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE
+     [ $inputs bucketizer.mean $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE
      $bucket [ NaN NaN NaN 0 ] FILLVALUE SORT 'bucket' STORE // fill all empty ticks with zero
 
      $bucket 0 GET 'wind' STORE
@@ -465,7 +465,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.median 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -482,7 +482,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    $bestpow VALUES FLATTEN // values
    MAKEGTS
   $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.median 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -502,7 +502,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    MAKEGTS
   'data' RENAME 'data' STORE
 
-   [ $data bucketizer.median 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
+   [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
    
   //calculate expected power with theoretical curve 
   [] 'values' STORE
@@ -544,7 +544,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.median 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -561,7 +561,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    $bestpow VALUES FLATTEN // values
    MAKEGTS
   $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.median 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -571,7 +571,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
   [ $curves [] $class filter.byclass ] FILTER 0 GET 'bestcurve' STORE 
    $bestcurve NAME TOLONG ISO8601 'T' SPLIT 0 GET 'time' STORE
    $bestcurve $time RENAME 'bestcurve' STORE
-   [ $bestcurve bucketizer.median 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'bestcurve' STORE
+   [ $bestcurve bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'bestcurve' STORE
       
       //create curve of the turbine
   $wind 100 * 'wind' STORE 
@@ -582,7 +582,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    MAKEGTS
   'data' RENAME 'data' STORE
 
-   [ $data bucketizer.median 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
+   [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
    
   //calculate expected power with theoretical curve 
   [] 'values' STORE
@@ -1221,7 +1221,7 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
      [ $myreadtoken '~ACTIVE_POWER.*' { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 	$endDate TOSTRING
-      ] FETCH 'data' STORE
+      ] FETCH { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data' STORE
 	  $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes
 	  [ $data bucketizer.mean 0 10 m 0 ] BUCKETIZE 'data' STORE
         $data
@@ -1243,7 +1243,7 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
          [ $myreadtoken '~(ACTIVE_POWER|WIND_SPEED).*' { 'plant' $plant 'TurbineId' $TurbineId } 
          //NOW 3 d 
          $startDate TOSTRING  $endDate TOSTRING 
-      ] FETCH { '.app' '' '.uuid' '' } RELABEL 'inputs' STORE //get all wind speed for a period
+      ] FETCH { '.app' '' '.uuid' '' 'type' '' } RELABEL 'inputs' STORE //get all wind speed for a period
       
      $inputs LASTTICK  "lastBucket" STORE
      10 m "bucketSpan" STORE // 1 minute
@@ -1434,7 +1434,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
          $startDate TOSTRING 
 	$endDate TOSTRING
       ] FETCH 'data' STORE
-	  $data { '.app' '' '.uuid' '' } RELABEL 'nacelle_data' STORE //relabel the atributes
+	  $data { '.app' '' '.uuid' '' 'type' '' } RELABEL 'nacelle_data' STORE //relabel the atributes
 	  [ $nacelle_data bucketizer.mean 0 10 m 0 ] BUCKETIZE 'nacelle_data' STORE 
 	  	  
 	  {
@@ -1459,7 +1459,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
      [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 	 $endDate TOSTRING
-      ] FETCH 'data' STORE
+      ] FETCH { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data' STORE
       
       [ $data bucketizer.mean 0 10 m 0 ] BUCKETIZE 'data' STORE
 	  {
@@ -1625,7 +1625,7 @@ MAKEGTS %>
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.median 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -1642,7 +1642,7 @@ MAKEGTS %>
    $bestpow VALUES FLATTEN // values
    MAKEGTS
   $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.median 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
