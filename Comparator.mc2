@@ -120,7 +120,7 @@
         'x' 10 'y' 0 'w' 2 'h' 1              
         'type' 'input:list'                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET LSORT 'listOfTurbines' STORE                    
+             [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                   
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId2 } } // the initial selected value coming from global vars                        
@@ -304,25 +304,38 @@
          $startDate TOSTRING 
 	 $endDate TOSTRING
       ] FETCH 'data1' STORE
-	   $data1 { '.app' '' '.uuid' '' } RELABEL 'data1' STORE //relabel the atributes
+	   $data1 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data1' STORE //relabel the atributes
     
      [ $myreadtoken $VariableId2 { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 	 $endDate TOSTRING
       ] FETCH 'data2' STORE
-	   $data2 { '.app' '' '.uuid' '' } RELABEL 'data2' STORE //relabel the atributes
+	   $data2 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data2' STORE //relabel the atributes
 	   
      [ $myreadtoken $VariableId3 { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
          $endDate TOSTRING
       ] FETCH 'data3' STORE
-	   $data3 { '.app' '' '.uuid' '' } RELABEL 'data3' STORE //relabel the atributes
+	   $data3 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data3' STORE //relabel the atributes
 	   
      [ $myreadtoken $VariableId4 { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
          $endDate TOSTRING
       ] FETCH 'data4' STORE
-	   $data4 { '.app' '' '.uuid' '' } RELABEL 'data4' STORE //relabel the atributes
+	   $data4 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data4' STORE //relabel the atributes
+
+       //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      1 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $data1 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data1' STORE
+      [ $data2 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data2' STORE
+      [ $data3 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data3' STORE
+      [ $data4 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data4' STORE
 	   
 	   
 
@@ -394,24 +407,40 @@
          $startDate TOSTRING 
 	 $endDate TOSTRING
       ] FETCH 'data1' STORE
-	   $data1 { '.app' '' '.uuid' '' } RELABEL 'data1' STORE //relabel the atributes
+	   $data1 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data1' STORE //relabel the atributes
     
      [ $myreadtoken $VariableId2 { 'TurbineId' $TurbineId2 'plant' $plant2 } 
          $startDate TOSTRING 
 	 $endDate TOSTRING
       ] FETCH 'data2' STORE
-	   $data2 { '.app' '' '.uuid' '' } RELABEL 'data2' STORE //relabel the atributes
+	   $data2 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data2' STORE //relabel the atributes
 	   
      [ $myreadtoken $VariableId3 { 'TurbineId' $TurbineId2 'plant' $plant2 } 
          $startDate TOSTRING 
          $endDate TOSTRING
       ] FETCH 'data3' STORE
-	   $data3 { '.app' '' '.uuid' '' } RELABEL 'data3' STORE //relabel the atributes
+	   $data3 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data3' STORE //relabel the atributes
+
      [ $myreadtoken $VariableId4 { 'TurbineId' $TurbineId2 'plant' $plant2 } 
          $startDate TOSTRING 
          $endDate TOSTRING
       ] FETCH 'data4' STORE
-	   $data4 { '.app' '' '.uuid' '' } RELABEL 'data4' STORE //relabel the atributes	   
+	   $data4 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data4' STORE //relabel the atributes	   
+
+
+      //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      1 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $data1 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data1' STORE
+      [ $data2 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data2' STORE
+      [ $data3 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data3' STORE
+      [ $data4 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data4' STORE
+
 
 	  //$data1 0 GET $value1 TOLONG <
 	  $condition1 'v1' STORE
@@ -487,6 +516,18 @@
 		$wind <% 100 * %> FOREACH 'wind' STORE
 		$plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
 
+         //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      1 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $pow bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'pow' STORE
+      [ $wind bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'wind' STORE
+    
+
 		$wind VALUES FLATTEN // ticks
 		[] [] []             // latitudes, longitudes and elevations
 		$pow VALUES FLATTEN // values
@@ -501,7 +542,7 @@
   ] FETCH 'pow2' STORE
 
 	   
-     [ $myreadtoken '~WIND_POWER.*' { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+     [ $myreadtoken '~WIND_SPEED.*' { 'TurbineId' $TurbineId2 'plant' $plant2 } 
          $startDate TOSTRING 
 	 $endDate TOSTRING
       ] FETCH 'wind2' STORE
@@ -509,6 +550,9 @@
         $plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + 'turbine_name2' STORE
 		$wind2 <% 100 * %> FOREACH 'wind2' STORE
 		
+        [ $pow2 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'pow2' STORE
+      [ $wind2 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'wind2' STORE
+
 		$wind2 VALUES FLATTEN // ticks
 		[] [] []             // latitudes, longitudes and elevations
 		$pow2 VALUES FLATTEN // values
@@ -517,36 +561,8 @@
 		[ $data_merge2 bucketizer.mean 0 0 50 ] BUCKETIZE 'mean_spline2' STORE
 		
 
-	  //$plant 'plant' STORE
-	  $plant
-	  <% $plant "Soke" == %> <% [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
-1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
-[] [] []             // latitudes longitudes and elevations
-[  0.0 7.0 53.0 123.0 208.0 309.0 427.0 567.0
-                           732.0 927.0 1149.0 1401.0 1688.0 2006.0 2348.0 2693.0 
-                           3011.0 3252.0 3388.0 3436.0 3448.0 3450.0 3450.0 
-                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 
-                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0  3450.0
-                            3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0
-                            3450.0 3450.0 ] // values
-MAKEGTS 'Specs' RENAME %>
-	  <% [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
-               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
-               [] [] []             // latitudes longitudes and elevations
-               [ 0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410
-                           458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 
-                           1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 
-                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 
-                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0  1500.0
-                            1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0
-                            1500.0 1500.0 ] // values
-              MAKEGTS 'Specs' RENAME %>	  
-	  1 SWITCH 'turbine_type' STORE
-
-    $turbine_type $mean_spline $mean_spline2
-
 	 
-	 { 'data' [ $data_merge $mean_spline $data_merge2 $mean_spline2 $turbine_type ] 'params' [ { 'type' 'scatter' } { 'type' 'spline' }  { 'type' 'scatter' } { 'type' 'spline' }  { 'type' 'spline' } ]  'globalParams' {  'timeMode' 'timestamp' } } 
+	 { 'data' [ $data_merge $mean_spline $data_merge2 $mean_spline2 ] 'params' [ { 'type' 'scatter' } { 'type' 'spline' }  { 'type' 'scatter' } { 'type' 'spline' } ]  'globalParams' {  'timeMode' 'timestamp' } } 
 	
       %>
 	  
