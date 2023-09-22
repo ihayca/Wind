@@ -187,7 +187,7 @@
     'macro' <%    
    //fetch the most recent point of every GTS this token can access
     [ $myreadtoken '~PLC_STATUS.*' { 'TurbineId' $TurbineId 'plant' $plant } 
-         NOW 1 d //$startDate TOSTRING 
+         NOW 7 d //$startDate TOSTRING 
 	       //$endDate TOSTRING
       ] FETCH 'data' STORE
 	  	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE 
@@ -465,7 +465,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -544,7 +544,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -1290,7 +1290,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -1367,7 +1367,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -1625,7 +1625,7 @@ MAKEGTS %>
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS  NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
