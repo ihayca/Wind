@@ -149,7 +149,7 @@ $outageList [  $turbine ' | ' + $start_time + ' | ' + $hduration + ' | ' + $stat
       'title' 'Component'
       'macro' <% 
 
-        [  'Generator' 'Gearbox' 'Rotor' 'Pitch&Yaw' 'Electrical' 'Cooling' 'Auxilary' ] 'statusList' STORE
+        [  'Generator' 'Gearbox' 'Converter' 'Rotor' 'Pitch' 'Yaw' 'Electrical' 'Cooling' 'Auxilary' ] 'statusList' STORE
         
         {
         'events' [ { 'tags' 'comp_code' 'type' 'variable' 'selector' 'comp_code' } ]

@@ -138,6 +138,7 @@
       'options' { 'eventHandler' 'type=(variable),tag=(endDate|startDate|TurbineId|plant|input|bucketsize|valuetype)'
                   // suscribe to events
         //'tabular' { 'fixedWidth' true }
+        'autoRefresh' 60
         'showRangeSelector' true
         'showLegend' true
       }

@@ -637,7 +637,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
     'title' 'Wind Direction'
     'options' { 'autoRefresh' 10
                 'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate)'
-		'showRangeSelector' true
+		            'showRangeSelector' true
 
 				}
     'x' 6 'y' 1 'w' 2 'h' 4
