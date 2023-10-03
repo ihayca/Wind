@@ -101,7 +101,8 @@
 [] 'outageList' STORE
 
 0 $rows SIZE 1 - <% 'i' STORE 
-'Turbine-' $rows $i GET 0 GET TOSTRING + 'turbine' STORE
+//'Turbine-' $rows $i GET 0 GET TOSTRING + 'turbine' STORE
+$rows $i GET 0 GET TOSTRING 'turbine' STORE
 $rows $i GET 2 GET TOSTRING 'start_time' STORE 
 $rows $i GET -1 GET TOSTRING 'status_name' STORE
 $rows $i GET -2 GET 'duration' STORE 
@@ -110,6 +111,7 @@ $duration HUMANDURATION '.' SPLIT 0 GET 's' + TOSTRING 'hduration' STORE
 $outageList [  $turbine ' | ' + $start_time + ' | ' + $hduration + ' | ' + $status_name + ] APPEND 'outageList' STORE 
 %> FOR
 
+$outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
 
         {
         'events' [ { 'tags' [ 'status_event' ] 'type' 'variable' 'selector' 'status_event' } ]
@@ -218,7 +220,7 @@ $outageList [  $turbine ' | ' + $start_time + ' | ' + $hduration + ' | ' + $stat
   ] FETCH 'data' STORE
 	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes
 
-  [ $data bucketizer.last 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'allbucket' STORE
+  [ $data bucketizer.last 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT [ 'TurbineId' ] METASORT 'allbucket' STORE
   $allbucket $endDate $startDate  TIMECLIP 'allbucket' STORE // we took 1 day before for alignment, so correct here
   [] 'rows' STORE
   [] 'trows' STORE //rows with timestamp to send in an event
@@ -365,46 +367,55 @@ $outageList [  $turbine ' | ' + $start_time + ' | ' + $hduration + ' | ' + $stat
       }
       'macro' <%
 
-    0 'offline' STORE 
-0 'init' STORE
-0 'stop' STORE
-0 'start' STORE
-0 'service' STORE
-0 'error' STORE
-0 'low' STORE
-0 'high' STORE
-0 'other' STORE
-[] 'newrows' STORE
+        [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'numOfTurbines' STORE
+           [ 'Offline' ] 'offlinerow' STORE 
+           [ 'Initialization' ]  'initrow' STORE
+           [ 'Stop' ] 'stoprow' STORE
+           [ 'Start' ] 'startrow' STORE
+           [ 'Service' ] 'servicerow' STORE
+           [ 'Error' ] 'errorrow' STORE
+           [ 'Low Temp.' ] 'lowrow' STORE
+           [ 'High Wind' ] 'highrow' STORE
+           [] 'newrows' STORE
+           [] 'newcolumns' STORE
 
-0 $rows SIZE 1 - <% 'i' STORE 
-$rows $i GET -1 GET 'status_name' STORE
-$rows $i GET -2 GET 'duration' STORE
+// look for each turbine status and sum durations
+        1 $numOfTurbines <% 'i' STORE 
+                0 'offline' STORE 
+                0 'init' STORE
+                0 'stop' STORE
+                0 'start' STORE
+                0 'service' STORE
+                0 'error' STORE
+                0 'low' STORE
+                0 'high' STORE
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Offline' == %> LFILTER <% -2 GET TOLONG $offline + 'offline' STORE %> FOREACH // 'servis' STORE //get all servis 
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Initialization' == %> LFILTER <% -2 GET TOLONG $init + 'init' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Stop' == %> LFILTER <% -2 GET TOLONG $stop + 'stop' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Starting' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Start' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Error' == %> LFILTER <% -2 GET TOLONG $error + 'error' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Service' == %> LFILTER <% -2 GET TOLONG $service + 'service' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Low Temp.' == %> LFILTER <% -2 GET TOLONG $low + 'low' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'High Wind' == %> LFILTER <% -2 GET TOLONG $high + 'high' STORE %> FOREACH
+           
+           $offline $init + $stop + $start + $error + $service + $low + $high +  3600000000 /  'total' STORE
+           <% $total 0 > %> <% $newcolumns [ $i ] APPEND 'newcolumns' STORE 
+           
+           $startrow [ $start 3600000000 / ] APPEND 'startrow' STORE
+           $offlinerow [ $offline 3600000000 / ] APPEND 'offlinerow' STORE
+           $initrow [ $init 3600000000 / ] APPEND 'initrow' STORE
+           $stoprow [ $stop 3600000000 / ] APPEND 'stoprow' STORE
+           $errorrow [ $error 3600000000 / ] APPEND 'errorrow' STORE
+           $servicerow [ $service 3600000000 / ] APPEND 'servicerow' STORE
+           $lowrow [ $low 3600000000 / ] APPEND 'lowrow' STORE
+           $highrow [ $high 3600000000 / ] APPEND 'highrow' STORE %> IFT
 
-        <% $status_name 'Initialization' == %> <% $init $duration + 'init' STORE %>  
-        <% $status_name 'Stop' == %> <% $stop $duration + 'stop' STORE %>
-        <% $status_name 'Starting' == %> <% $start $duration + 'start' STORE %>
-        <% $status_name 'Service' == %> <% $service $duration + 'service' STORE %>
-        <% $status_name 'Offline' == %> <% $offline $duration + 'offline' STORE %>
-        <% $status_name 'Start' == %> <% $start $duration + 'start' STORE %>
-        <% $status_name 'Error' == %> <% $error $duration + 'error' STORE %>
-        <% $status_name 'Service' == %> <% $service $duration + 'service' STORE %>
-        <% $status_name 'Low Temp.' == %> <% $low $duration + 'low' STORE %>
-        <% $status_name 'High Wind' == %> <% $high $duration + 'high' STORE %>
-        <% $other $duration + 'other' STORE %> 10 SWITCH       
-%> FOR
-      [ [ 'Initialization' $init TODOUBLE 3600000000 / ] 
-        [ 'Stop' $stop TODOUBLE 3600000000 / ]
-        [ 'Start' $start  TODOUBLE 3600000000 / ]
-        [ 'Service' $service TODOUBLE 3600000000 / ]
-        [ 'Offline' $offline TODOUBLE 3600000000 / ]
-        [ 'Error' $error TODOUBLE 3600000000 / ]
-        [ 'Low Temp.' $low TODOUBLE 3600000000 / ]
-        [ 'High Wind' $high TODOUBLE 3600000000 / ]
-        //[ 'Other' $other ]       
-      ] 'newrows' STORE
+        %> FOR
+     $newrows [ $startrow ] APPEND [ $offlinerow ] APPEND [ $initrow ] APPEND [ $stoprow ] APPEND [ $errorrow ] APPEND [ $servicerow ] APPEND [ $lowrow ] APPEND [ $highrow ] APPEND  'newrows' STORE
 
        {
-          'columns' [ 'Status' ]
+          'columns' $newcolumns //[ 'Status' ]
           'rows' $newrows
         } 
         'values' STORE
@@ -412,10 +423,11 @@ $rows $i GET -2 GET 'duration' STORE
         { 'data' $values
           //'events' [ { 'type' 'data' 'tags' [ 'rows' ] 'value' $rows }  ] 
           'globalParams' {
-    'tabular' {
-      'fixedWidth' true 
-      'sortable' true 
-      'filterable' true 
+                'showLegend' true 
+
+           'bar' { 
+      //'horizontal' true 
+      'stacked' true 
     }
   }
   } // data can also be a gts or a list thereof
@@ -431,46 +443,52 @@ $rows $i GET -2 GET 'duration' STORE
       }
       'macro' <%
 
-    0 'offline' STORE 
-0 'init' STORE
-0 'stop' STORE
-0 'start' STORE
-0 'service' STORE
-0 'error' STORE
-0 'low' STORE
-0 'high' STORE
-0 'other' STORE
-[] 'newrows' STORE
+   [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'numOfTurbines' STORE
+           [ 'Offline' ] 'offlinerow' STORE 
+           [ 'Initialization' ]  'initrow' STORE
+           [ 'Stop' ] 'stoprow' STORE
+           [ 'Start' ] 'startrow' STORE
+           [ 'Service' ] 'servicerow' STORE
+           [ 'Error' ] 'errorrow' STORE
+           [ 'Low Temp.' ] 'lowrow' STORE
+           [ 'High Wind' ] 'highrow' STORE
+           [] 'newrows' STORE
+           [] 'newcolumns' STORE
 
-0 $rows SIZE 1 - <% 'i' STORE 
-$rows $i GET -1 GET 'status_name' STORE
-$rows $i GET -2 GET 'duration' STORE
+// look for each turbine status and sum durations
+        1 $numOfTurbines <% 'i' STORE 
+                0 'offline' STORE 
+                0 'init' STORE
+                0 'stop' STORE
+                0 'start' STORE
+                0 'service' STORE
+                0 'error' STORE
+                0 'low' STORE
+                0 'high' STORE
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Offline' == %> LFILTER <% -2 GET TOLONG $offline + 'offline' STORE %> FOREACH // 'servis' STORE //get all servis 
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Initialization' == %> LFILTER <% -2 GET TOLONG $init + 'init' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Stop' == %> LFILTER <% -2 GET TOLONG $stop + 'stop' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Starting' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Start' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Error' == %> LFILTER <% -2 GET TOLONG $error + 'error' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Service' == %> LFILTER <% -2 GET TOLONG $service + 'service' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Low Temp.' == %> LFILTER <% -2 GET TOLONG $low + 'low' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'High Wind' == %> LFILTER <% -2 GET TOLONG $high + 'high' STORE %> FOREACH
 
-        <% $status_name 'Initialization' == %> <% $init $duration + 'init' STORE %>  
-        <% $status_name 'Stop' == %> <% $stop $duration + 'stop' STORE %>
-        <% $status_name 'Starting' == %> <% $start $duration + 'start' STORE %>
-        <% $status_name 'Service' == %> <% $service $duration + 'service' STORE %>
-        <% $status_name 'Offline' == %> <% $offline $duration + 'offline' STORE %>
-        <% $status_name 'Start' == %> <% $start $duration + 'start' STORE %>
-        <% $status_name 'Error' == %> <% $error $duration + 'error' STORE %>
-        <% $status_name 'Service' == %> <% $service $duration + 'service' STORE %>
-        <% $status_name 'Low Temp.' == %> <% $low $duration + 'low' STORE %>
-        <% $status_name 'High Wind' == %> <% $high $duration + 'high' STORE %>
-        <% $other $duration + 'other' STORE %> 10 SWITCH       
-%> FOR
-      [ [ 'Initialization' $init TODOUBLE 3600000000 / ] 
-        [ 'Stop' $stop TODOUBLE 3600000000 / ]
-        [ 'Start' $start  TODOUBLE 3600000000 / ]
-        [ 'Service' $service TODOUBLE 3600000000 / ]
-        [ 'Offline' $offline TODOUBLE 3600000000 / ]
-        [ 'Error' $error TODOUBLE 3600000000 / ]
-        [ 'Low Temp.' $low TODOUBLE 3600000000 / ]
-        [ 'High Wind' $high TODOUBLE 3600000000 / ]
-        //[ 'Other' $other ]       
-      ] 'newrows' STORE
+           $newcolumns [ $i ] APPEND 'newcolumns' STORE
+           $startrow [ $start 3600000000 / ] APPEND 'startrow' STORE
+           $offlinerow [ $offline 3600000000 / ] APPEND 'offlinerow' STORE
+           $initrow [ $init 3600000000 / ] APPEND 'initrow' STORE
+           $stoprow [ $stop 3600000000 / ] APPEND 'stoprow' STORE
+           $errorrow [ $error 3600000000 / ] APPEND 'errorrow' STORE
+           $servicerow [ $service 3600000000 / ] APPEND 'servicerow' STORE
+           $lowrow [ $low 3600000000 / ] APPEND 'lowrow' STORE
+           $highrow [ $high 3600000000 / ] APPEND 'highrow' STORE
+        %> FOR
+     $newrows [ $startrow ] APPEND [ $offlinerow ] APPEND [ $initrow ] APPEND [ $stoprow ] APPEND [ $errorrow ] APPEND [ $servicerow ] APPEND [ $lowrow ] APPEND [ $highrow ] APPEND  'newrows' STORE
 
        {
-          'columns' [ 'Status' ]
+          'columns' $newcolumns //[ 'Status' ]
           'rows' $newrows
         } 
         'values' STORE
@@ -478,10 +496,9 @@ $rows $i GET -2 GET 'duration' STORE
         { 'data' $values
           //'events' [ { 'type' 'data' 'tags' [ 'rows' ] 'value' $rows }  ] 
           'globalParams' {
-    'tabular' {
-      'fixedWidth' true 
-      'sortable' true 
-      'filterable' true 
+           'bar' { 
+      //'horizontal' true 
+      'stacked' true 
     }
   }
   } // data can also be a gts or a list thereof
