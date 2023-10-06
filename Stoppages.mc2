@@ -14,11 +14,12 @@
       'plant' 'Usak'
       
       'TurbineId' '1'
-      'status_event' 'Turbine-1 | 2022-07-01T00:00:00 | 10m0s'
-      'status_code' ''
-      'comp_code' ''
+      'status_event' '1 | 2022-07-01T00:00:00 | 10m0s | Dummy' // 'Turbine-1 | 2022-07-01T00:00:00 | 10m0s'
+      'duration' 600000000
+      'status_origin' 'Select'
+      'comp_code' 'Select'
       'rows' []     
-      'startDate' [ NOW 1 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
+      'startDate' [ NOW 2 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
       'endDate' NOW //1658913094000000   //604800000000
 
       'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
@@ -104,21 +105,25 @@
 //'Turbine-' $rows $i GET 0 GET TOSTRING + 'turbine' STORE
 $rows $i GET 0 GET TOSTRING 'turbine' STORE
 $rows $i GET 2 GET TOSTRING 'start_time' STORE 
-$rows $i GET -1 GET TOSTRING 'status_name' STORE
-$rows $i GET -2 GET 'duration' STORE 
+$rows $i GET 4 GET TOSTRING 'status_name' STORE
+$rows $i GET 3 GET 'duration' STORE 
 $duration HUMANDURATION '.' SPLIT 0 GET 's' + TOSTRING 'hduration' STORE
 
 $outageList [  $turbine ' | ' + $start_time + ' | ' + $hduration + ' | ' + $status_name + ] APPEND 'outageList' STORE 
 %> FOR
 
-$outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
+$outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
+//$outageList 0 GET 'status_event' STORE
 
         {
-        'events' [ { 'tags' [ 'status_event' ] 'type' 'variable' 'selector' 'status_event' } ]
-        'globalParams' { 'status_event' { 'value' $status_event } } // default value
+          'data' $outageList 
+          'globalParams' { 'input' { 'value' $status_event 'showButton' true } } // default value
+          'events' [ { 'tags' [ 'status_event' ] 'type' 'variable' 'selector' 'status_event' }
+                     ]
+       
         // when refering to a variable defined outside the tile macro and not in dashboard vars,
         // use early binding:  !$xxx  will replace the variable by its content during the first execution.
-        'data' $outageList 
+        
       } %>
     }
 
@@ -134,8 +139,8 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
         [  'Manufacturer' 'Buyer' ] 'statusList' STORE
         
         {
-        'events' [ { 'tags' 'status_code' 'type' 'variable' 'selector' 'status_code' } ]
-        'globalParams' { 'input' { 'value' $status_code } } // default value
+        'events' [ { 'tags' 'status_origin' 'type' 'variable' 'selector' 'status_origin' } ]
+        'globalParams' { 'input' { 'value' $status_origin 'showButton' true } } // default value
         // when refering to a variable defined outside the tile macro and not in dashboard vars,
         // use early binding:  !$xxx  will replace the variable by its content during the first execution.
         'data' $statusList FLATTEN
@@ -155,7 +160,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
         
         {
         'events' [ { 'tags' 'comp_code' 'type' 'variable' 'selector' 'comp_code' } ]
-        'globalParams' { 'input' { 'value' $comp_code } } // default value
+        'globalParams' { 'input' { 'value' $comp_code 'showButton' true } } // default value
         // when refering to a variable defined outside the tile macro and not in dashboard vars,
         // use early binding:  !$xxx  will replace the variable by its content during the first execution.
         'data' $statusList FLATTEN
@@ -167,30 +172,33 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
       'title' 'Update Status'
       'options' {
         'button' { 'label' 'Submit' }
-        'eventHandler' 'type=variable,tag=(status_event|status_code|plant|TurbineId)'
+        'eventHandler' 'type=variable,tag=(status_event|status_origin|comp_code|plant|TurbineId|duration)'
       }
       'x' 11 'y' 0  'w' 1 'h' 1
       'macro' <% 
         { 
           'data' <%  
             $status_event '|' SPLIT 'outageList' STORE
-            $outageList 0 GET '-' SPLIT 1 GET TRIM 'TurbineId' STORE //turbineid to update
-            $outageList 1 GET TRIM 'starttick' STORE //startdate to update
+            $outageList 0 GET TRIM 'TurbineId' STORE //turbineid to update '-' SPLIT 1 GET
+            $outageList 1 GET TRIM 'Z' + TOTIMESTAMP 3 h - 1 m - 'starttick' STORE //startdate to update
+            $outageList 2 GET TRIM 'Hduration' STORE
+            'PT' $Hduration + DURATION 'tduration' STORE //duration in timestamps
+            $outageList 3 GET TRIM 'Status' STORE
             //$starttick TOTIMESTAMP 'starttick' STORE
             //$outageList 2 GET 'duration' STORE //duration to delete and update
             //$outageList -1 GET TRIM 'endtick' STORE
             //$endtick TOTIMESTAMP 'endtick' STORE
 
-            //$starttick $duration + 'endtick' STORE
+            $starttick 2 m + 'endtick' STORE
 
-            [ $myreadtoken '~PLC_STATUS.*' {  'plant' $plant 'TurbineId' $TurbineId } 
-             $starttick $endtick  ] FETCH 'y' STORE
+            [ $myreadtoken 'PLC_STATUS' {  'plant' $plant 'TurbineId' $TurbineId } 
+             $starttick 1 m - ISO8601  $endtick ISO8601 ] FETCH 'y' STORE // get status code of the status
             // $y 0 GET LOCSTRINGS 0 GET HHCODE-> 'lat' STORE 'lon' STORE //lat-lon of turbine to be updated
-            $y 0 GET NAME 'newname' STORE  
-            $y { 'origin' $status_code 'component' $comp_code } RELABEL $newname RENAME 'new_data' STORE
+            $y 0 GET NAME '_REPORT' + 'newname' STORE  
+            $y { 'origin' $status_origin 'component' $comp_code 'duration' $Hduration 'status' $Status 'tduration' $tduration TOSTRING } RELABEL $newname RENAME 'new_data' STORE
              $newname '{' + 'plant=' + $plant ',' + 'TurbineId=' $TurbineId + '}' + + + 'gtsselector' STORE
-             //$writetoken $gtsselector $starttick $endtick MAXLONG DELETE
-             //$new_data $writetoken UPDATE
+             $writetoken $gtsselector $starttick 1 m - $endtick MAXLONG DELETE // delete if an old report exist
+             $new_data $writetoken UPDATE // write new report
 
               { 'data' $new_data 
               'events' [ { 'type' 'variable' 'tags' [  'plant' ] 'value' $plant }  ] 
@@ -214,7 +222,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
 	 $endDate TOSTRING
       ] FETCH 'x' STORE
 
-[ $myreadtoken '~PLC_STATUS.*' {  'plant' $plant } 
+[ $myreadtoken 'PLC_STATUS' {  'plant' $plant } 
          $startDate 1 d - TOSTRING
          $endDate TOSTRING 
   ] FETCH 'data' STORE
@@ -232,7 +240,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
 
     $bucket LABELS 'TurbineId' GET 'turbine' STORE 
     $bucket LABELS 'manufacturer' GET 'manu' STORE
-
+    //check for different manufacturers
     <% $manu 'Goldwind' == %> <% 
    [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
    [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
@@ -257,10 +265,16 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
                       <% 'PT2M' DURATION 'tduration' STORE %> 1 SWITCH
 
                       $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
-                      $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
-                      $rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE
-                      $trows [ [ $turbine $manu $start $tduration $status_name ] ] APPEND 'trows' STORE 
+                      $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE  //get human duration
 
+                      //check if stoppage is reported
+                      $ticks 0 GET  $tduration + 2 m + 'endtick' STORE
+                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine } 
+                       $ticks 0 GET  $endtick ] FETCH 'report' STORE
+                       <% $report [] == %> <% 'No' 'reported' STORE %> <% 'Yes' 'reported' STORE %> IFTE
+
+                      $rows [ [ $turbine $manu $start $duration $status_name $reported ] ] APPEND 'rows' STORE //rows for display
+                      $trows [ [ $turbine $manu $start $tduration $status_name $reported ] ] APPEND 'trows' STORE //rows for events
 
                     %> FOR  //end of for
               %> 
@@ -301,14 +315,21 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
        0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE  //start of for
                       $ticks 0 GET 'start' STORE //start of status
                       $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
-
+                      // calculate stoppage duration
                       <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE %>
                       <% 'PT2M' DURATION 'tduration' STORE %> 1 SWITCH
-
+                      //add duration to new gts
                       $g $ticks 0 GET NaN NaN NaN $tduration ADDVALUE DROP
-                      $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
-                      $rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE 
-                      $trows [ [ $turbine $manu $start $tduration $status_name ] ] APPEND 'trows' STORE
+                      $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE // get human duration
+
+                      //check if stoppage is reported
+                      $ticks 0 GET  $tduration + 2 m + 'endtick' STORE
+                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine } 
+                       $ticks 0 GET  $endtick ] FETCH 'report' STORE
+                       <% $report [] == %> <% 'No' 'reported' STORE %> <% 'Yes' 'reported' STORE %> IFTE
+
+                      $rows [ [ $turbine $manu $start $duration $status_name $reported ] ] APPEND 'rows' STORE //rows for display
+                      $trows [ [ $turbine $manu $start $tduration $status_name $reported ] ] APPEND 'trows' STORE //rows for events
 
                     %> FOR  //end of for
               %> 
@@ -333,13 +354,13 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
   %> FOR
 
              {
-          'columns' [ 'TurbineId' 'Manufacturer' 'Start Date' 'Duration' 'Status' ]
+          'columns' [ 'TurbineId' 'Manufacturer' 'Start Date' 'Duration' 'Status' 'Reported' ]
           'rows' $rows
         } 
         'values' STORE
 
           {
-          'columns' [ 'TurbineId' 'Manufacturer' 'Start Date' 'Duration' 'Status' ]
+          'columns' [ 'TurbineId' 'Manufacturer' 'Start Date' 'Duration' 'Status' 'Reported' ]
           'rows' $trows
         } 
         'tvalues' STORE
@@ -359,7 +380,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
 
 
  {
-      'type' 'bar' 'x' 6 'y' 1 'w' 6 'h' 3
+      'type' 'bar' 'x' 6 'y' 1 'w' 6 'h' 2
       'title' 'Types'
       'options' { 'eventHandler' 'type=(variable|data),tag=(result)'
                   // suscribe to events
@@ -389,27 +410,27 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
                 0 'error' STORE
                 0 'low' STORE
                 0 'high' STORE
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Offline' == %> LFILTER <% -2 GET TOLONG $offline + 'offline' STORE %> FOREACH // 'servis' STORE //get all servis 
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Initialization' == %> LFILTER <% -2 GET TOLONG $init + 'init' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Stop' == %> LFILTER <% -2 GET TOLONG $stop + 'stop' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Starting' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Start' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Error' == %> LFILTER <% -2 GET TOLONG $error + 'error' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Service' == %> LFILTER <% -2 GET TOLONG $service + 'service' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Low Temp.' == %> LFILTER <% -2 GET TOLONG $low + 'low' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'High Wind' == %> LFILTER <% -2 GET TOLONG $high + 'high' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Offline' == %> LFILTER <% 3 GET TOLONG $offline + 'offline' STORE %> FOREACH // 'servis' STORE //get all servis 
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Initialization' == %> LFILTER <% 3 GET TOLONG $init + 'init' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Stop' == %> LFILTER <% 3 GET TOLONG $stop + 'stop' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Starting' == %> LFILTER <% 3 GET TOLONG $start + 'start' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Start' == %> LFILTER <% 3 GET TOLONG $start + 'start' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Error' == %> LFILTER <% 3 GET TOLONG $error + 'error' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Service' == %> LFILTER <% 3 GET TOLONG $service + 'service' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'Low Temp.' == %> LFILTER <% 3 GET TOLONG $low + 'low' STORE %> FOREACH
+           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP 4 GET 'High Wind' == %> LFILTER <% 3 GET TOLONG $high + 'high' STORE %> FOREACH
            
-           $offline $init + $stop + $start + $error + $service + $low + $high +  3600000000 /  'total' STORE
+           $offline $init + $stop + $start + $error + $service + $low + $high +  60000000 /  'total' STORE // convert to min 3600000000 for hour
            <% $total 0 > %> <% $newcolumns [ $i ] APPEND 'newcolumns' STORE 
            
-           $startrow [ $start 3600000000 / ] APPEND 'startrow' STORE
-           $offlinerow [ $offline 3600000000 / ] APPEND 'offlinerow' STORE
-           $initrow [ $init 3600000000 / ] APPEND 'initrow' STORE
-           $stoprow [ $stop 3600000000 / ] APPEND 'stoprow' STORE
-           $errorrow [ $error 3600000000 / ] APPEND 'errorrow' STORE
-           $servicerow [ $service 3600000000 / ] APPEND 'servicerow' STORE
-           $lowrow [ $low 3600000000 / ] APPEND 'lowrow' STORE
-           $highrow [ $high 3600000000 / ] APPEND 'highrow' STORE %> IFT
+           $startrow [ $start 60000000 / ] APPEND 'startrow' STORE
+           $offlinerow [ $offline 60000000 / ] APPEND 'offlinerow' STORE
+           $initrow [ $init 60000000 / ] APPEND 'initrow' STORE
+           $stoprow [ $stop 60000000 / ] APPEND 'stoprow' STORE
+           $errorrow [ $error 60000000 / ] APPEND 'errorrow' STORE
+           $servicerow [ $service 60000000 / ] APPEND 'servicerow' STORE
+           $lowrow [ $low 60000000 / ] APPEND 'lowrow' STORE
+           $highrow [ $high 60000000 / ] APPEND 'highrow' STORE %> IFT
 
         %> FOR
      $newrows [ $startrow ] APPEND [ $offlinerow ] APPEND [ $initrow ] APPEND [ $stoprow ] APPEND [ $errorrow ] APPEND [ $servicerow ] APPEND [ $lowrow ] APPEND [ $highrow ] APPEND  'newrows' STORE
@@ -435,67 +456,92 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
     }
 
     {
-      'type' 'bar' 'x' 6 'y' 4 'w' 6 'h' 3
+      'type' 'bar' 'x' 6 'y' 3 'w' 4 'h' 2
       'title' 'Components'
-      'options' { 'eventHandler' 'type=(variable|data),tag=(result)'
+      'options' { 'eventHandler' 'type=(variable|data),tag=(startDate|endDate|plant)'
                   // suscribe to events
         'tabular' { 'fixedWidth' true }
       }
       'macro' <%
 
-   [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'numOfTurbines' STORE
-           [ 'Offline' ] 'offlinerow' STORE 
-           [ 'Initialization' ]  'initrow' STORE
-           [ 'Stop' ] 'stoprow' STORE
-           [ 'Start' ] 'startrow' STORE
-           [ 'Service' ] 'servicerow' STORE
-           [ 'Error' ] 'errorrow' STORE
-           [ 'Low Temp.' ] 'lowrow' STORE
-           [ 'High Wind' ] 'highrow' STORE
-           [] 'newrows' STORE
-           [] 'newcolumns' STORE
+          [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant } 
+            $startDate TOSTRING $endDate TOSTRING  ] FETCH 'y' STORE  // get the status tick to update
+            [] 'rows' STORE
+            [] 'columns' STORE
+            [ 'Generator' ] 'genrow' STORE  
+            [ 'Gearbox' ] 'gearrow' STORE 
+            [ 'Converter' ]  'conrow' STORE
+            [ 'Rotor' ] 'rotrow' STORE
+            [ 'Pitch' ] 'pitrow' STORE
+            [ 'Yaw' ] 'yawrow' STORE
+            [ 'Electrical' ] 'elecrow' STORE
+            [ 'Cooling' ] 'coolrow' STORE
+            [ 'Auxilary' ] 'auxrow' STORE
+            <% $y [] == %> <% 'empty' %> 
+            <% 
+             0 $y SIZE 1 - <% 'i' STORE
+                0 'gen' STORE 
+                0 'gear' STORE
+                0 'con' STORE
+                0 'rot' STORE
+                0 'pit' STORE
+                0 'yaw' STORE
+                0 'elec' STORE
+                0 'cool' STORE 
+                0 'aux' STORE 
+             
+             $y $i GET LABELS 'TurbineId' GET 'turbine' STORE
+             $y $i GET LABELS 'tduration' GET TOLONG 'duration' STORE // TOLONG HUMANDURATION '.' SPLIT 0 GET 's' + 
+             $y $i GET LABELS 'status' GET 'status' STORE
+             $y $i GET LABELS 'manufacturer' GET 'manufacturer' STORE
+             $y $i GET LABELS 'origin' GET 'origin' STORE
+             $y $i GET LABELS 'component' GET 'component' STORE
+             $y $i GET FIRSTTICK 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+             
+             <% $component 'Generator' == %> <% $gen $duration  + 'gen' STORE %>
+             <% $component 'Gearbox' == %> <% $gear $duration  + 'gear' STORE %>
+             <% $component 'Converter' == %> <% $con $duration  + 'con' STORE %>
+             <% $component 'Rotor' == %> <% $rot $duration  + 'rot' STORE %>
+             <% $component 'Pitch' == %> <% $pit $duration  + 'pit' STORE %>
+             <% $component 'Yaw' == %> <% $yaw $duration  + 'yaw' STORE %>
+             <% $component 'Electrical' == %> <% $elec $duration  + 'elec' STORE %>
+             <% $component 'Cooling' == %> <% $cool $duration  + 'cool' STORE %>
+             <% $component 'Auxilary' == %> <% $aux $duration  + 'aux' STORE %>
+             <% %> 9 SWITCH
 
-// look for each turbine status and sum durations
-        1 $numOfTurbines <% 'i' STORE 
-                0 'offline' STORE 
-                0 'init' STORE
-                0 'stop' STORE
-                0 'start' STORE
-                0 'service' STORE
-                0 'error' STORE
-                0 'low' STORE
-                0 'high' STORE
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Offline' == %> LFILTER <% -2 GET TOLONG $offline + 'offline' STORE %> FOREACH // 'servis' STORE //get all servis 
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Initialization' == %> LFILTER <% -2 GET TOLONG $init + 'init' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Stop' == %> LFILTER <% -2 GET TOLONG $stop + 'stop' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Starting' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Start' == %> LFILTER <% -2 GET TOLONG $start + 'start' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Error' == %> LFILTER <% -2 GET TOLONG $error + 'error' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Service' == %> LFILTER <% -2 GET TOLONG $service + 'service' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'Low Temp.' == %> LFILTER <% -2 GET TOLONG $low + 'low' STORE %> FOREACH
-           $rows <% DROP 0 GET TOLONG $i == %> LFILTER <% DROP -1 GET 'High Wind' == %> LFILTER <% -2 GET TOLONG $high + 'high' STORE %> FOREACH
 
-           $newcolumns [ $i ] APPEND 'newcolumns' STORE
-           $startrow [ $start 3600000000 / ] APPEND 'startrow' STORE
-           $offlinerow [ $offline 3600000000 / ] APPEND 'offlinerow' STORE
-           $initrow [ $init 3600000000 / ] APPEND 'initrow' STORE
-           $stoprow [ $stop 3600000000 / ] APPEND 'stoprow' STORE
-           $errorrow [ $error 3600000000 / ] APPEND 'errorrow' STORE
-           $servicerow [ $service 3600000000 / ] APPEND 'servicerow' STORE
-           $lowrow [ $low 3600000000 / ] APPEND 'lowrow' STORE
-           $highrow [ $high 3600000000 / ] APPEND 'highrow' STORE
-        %> FOR
-     $newrows [ $startrow ] APPEND [ $offlinerow ] APPEND [ $initrow ] APPEND [ $stoprow ] APPEND [ $errorrow ] APPEND [ $servicerow ] APPEND [ $lowrow ] APPEND [ $highrow ] APPEND  'newrows' STORE
+             $gen $gear + $con + $rot + $pit + $yaw + $elec + $cool + $aux +  60000000 /  'total' STORE // conver to min
+           <% $total 0 > %> <% $columns [ $turbine ] APPEND 'columns' STORE 
+           
+           $genrow [ $gen 60000000 / ] APPEND 'genrow' STORE 
+           $gearrow [ $gear 60000000 / ] APPEND 'gearrow' STORE
+           $conrow [ $con 60000000 / ] APPEND 'conrow' STORE
+           $rotrow [ $rot 60000000 / ] APPEND 'rotrow' STORE
+           $pitrow [ $pit 60000000 / ] APPEND 'pitrow' STORE
+           $yawrow [ $yaw 60000000 / ] APPEND 'yawrow' STORE
+           $elecrow [ $elec 60000000 / ] APPEND 'elecrow' STORE
+           $coolrow [ $cool 60000000 / ] APPEND 'coolrow' STORE
+           $auxrow [ $aux 60000000 / ] APPEND 'auxrow' STORE %> IFT
 
-       {
-          'columns' $newcolumns //[ 'Status' ]
-          'rows' $newrows
+             //$columns [ $turbine ] APPEND 'columns' STORE
+             //$rows [ [ $ $gearrow $ $ $ $ $ $ $auxrow ] ] APPEND 'rows' STORE 
+            
+            
+            
+             %> FOR
+           $rows [ $genrow ] APPEND [ $gearrow ] APPEND [ $conrow ] APPEND [ $rotrow ] APPEND [ $pitrow ] APPEND [ $yawrow ] APPEND [ $elecrow ] APPEND [ $coolrow ] APPEND [ $auxrow ] APPEND 'rows' STORE
+
+            %> IFTE
+    
+          {
+          'columns' $columns //[ 'Status' ] // turbine ids list
+          'rows' $rows
         } 
         'values' STORE
     
         { 'data' $values
           //'events' [ { 'type' 'data' 'tags' [ 'rows' ] 'value' $rows }  ] 
-          'globalParams' {
+          'globalParams' { 'showLegend' true 
            'bar' { 
       //'horizontal' true 
       'stacked' true 
@@ -504,6 +550,122 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY
   } // data can also be a gts or a list thereof
       %>
     }
+
+
+    {
+      'type' 'bar' 'x' 10 'y' 3 'w' 2 'h' 2
+      'title' 'Origin'
+      'options' { 'eventHandler' 'type=(variable|data),tag=(startDate|endDate|plant)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+
+          [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant } 
+            $startDate TOSTRING $endDate TOSTRING  ] FETCH 'y' STORE  // get the status tick to update
+            [] 'rows' STORE
+            [] 'columns' STORE
+            [ 'Manufacturer' ] 'manrow' STORE  
+            [ 'Buyer' ] 'buyrow' STORE 
+            <% $y [] == %> <% 'empty' %> 
+            <% 
+             0 $y SIZE 1 - <% 'i' STORE
+                0 'man' STORE 
+                0 'buy' STORE
+
+             $y $i GET LABELS 'TurbineId' GET 'turbine' STORE
+             $y $i GET LABELS 'tduration' GET TOLONG 'duration' STORE // TOLONG HUMANDURATION '.' SPLIT 0 GET 's' + 
+             $y $i GET LABELS 'status' GET 'status' STORE
+             $y $i GET LABELS 'manufacturer' GET 'manufacturer' STORE
+             $y $i GET LABELS 'origin' GET 'origin' STORE
+             $y $i GET LABELS 'component' GET 'component' STORE
+             $y $i GET FIRSTTICK 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+             
+             <% $origin 'Manufacturer' == %> <% $man $duration  + 'man' STORE %>
+             <% $origin 'Buyer' == %> <% $buy $duration  + 'buy' STORE %>
+             <% %> 2 SWITCH
+
+
+             $man $buy +  60000000 /  'total' STORE // conver to min
+           <% $total 0 > %> <% $columns [ $turbine ] APPEND 'columns' STORE 
+           
+           $manrow [ $man 60000000 / ] APPEND 'manrow' STORE 
+           $buyrow [ $buy 60000000 / ] APPEND 'buyrow' STORE %> IFT
+
+             //$columns [ $turbine ] APPEND 'columns' STORE
+             //$rows [ [ $ $gearrow $ $ $ $ $ $ $auxrow ] ] APPEND 'rows' STORE 
+            
+            
+            
+             %> FOR
+           $rows [ $manrow ] APPEND [ $buyrow ] APPEND 'rows' STORE
+
+            %> IFTE
+    
+          {
+          'columns' $columns //[ 'Status' ] // turbine ids list
+          'rows' $rows
+        } 
+        'values' STORE
+    
+        { 'data' $values
+          //'events' [ { 'type' 'data' 'tags' [ 'rows' ] 'value' $rows }  ] 
+          'globalParams' { 'showLegend' true 
+           'bar' { 
+      //'horizontal' true 
+      'stacked' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+     {
+      'type' 'tabular' 'x' 6 'y' 5 'w' 6 'h' 3
+      'title' 'Reported Status'
+      'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|plant)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+               [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant } 
+            $startDate TOSTRING $endDate TOSTRING  ] FETCH 'y' STORE  // get the status tick to update
+            [] 'rows' STORE
+            <% $y [] == %> <% 'empty' %> 
+            <% 
+             0 $y SIZE 1 - <% 'i' STORE  
+             
+             $y $i GET LABELS 'TurbineId' GET 'turbine' STORE
+             $y $i GET LABELS 'duration' GET 'duration' STORE // TOLONG HUMANDURATION '.' SPLIT 0 GET 's' + 
+             $y $i GET LABELS 'status' GET 'status' STORE
+             $y $i GET LABELS 'manufacturer' GET 'manufacturer' STORE
+             $y $i GET LABELS 'origin' GET 'origin' STORE
+             $y $i GET LABELS 'component' GET 'component' STORE
+             $y $i GET FIRSTTICK 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+             $rows [ [ $turbine $manufacturer $start $duration $status $origin $component ] ] APPEND 'rows' STORE 
+             %> FOR
+
+            %> IFTE
+
+            {
+          'columns' [ 'Turbine' 'Manufacturer' 'Start' 'Duration' 'Status' 'Origin' 'Component' ]
+          'rows' $rows
+        } 
+        'values' STORE
+    
+        { 'data' $values
+          'events' [ { 'type' 'data' 'tags' [ 'report' ] 'value' $values }  ] 
+         'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      'filterable' false 
+    }
+  }
+  } 
+
+      %>
+     }
 	
   ]
 

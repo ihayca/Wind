@@ -1479,7 +1479,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
     'type' 'profile' 	
     'macro' <%    
    //fetch the most recent point of every GTS this token can access
-    [ $myreadtoken '~PLC_STATUS.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+    [ $myreadtoken 'PLC_STATUS' { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 	$endDate TOSTRING
       ] FETCH 'data' STORE
