@@ -11,9 +11,8 @@
          }
 		 
   'vars' {
-      'plant' 'Usak'
-      
-      'TurbineId' '1'
+      'plant' 'Usak-SN'
+      'TurbineId' [ '1' '2' ]
       'status_event' '1 | 2022-07-01T00:00:00 | 10m0s | Dummy' // 'Turbine-1 | 2022-07-01T00:00:00 | 10m0s'
       'duration' 600000000
       'status_origin' 'Select'
@@ -36,7 +35,8 @@
         'x' 0 'y' 0 'w' 1 'h' 1                
         'type' 'input:list'                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            //[ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE  
+            [ 'Usak-SN' 'Usak-GW' 'Yalova' 'Soke' ] 'listOfPlants' STORE         
             {                        
                 'data' $listOfPlants                        
                 'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
@@ -46,15 +46,21 @@
 		
     }  
 	{                
-        'title' 'Turbine 1'                
-        'x' 2 'y' 0 'w' 2 'h' 1              
-        'type' 'hidden' // 'input:list'                
-        'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                     
+        'title' 'Turbines'                
+        'x' 0 'y' 1 'w' 1 'h' 6             
+        'type' 'input:multi-cb' // 'input:list'  
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)'
+                     'input' { 'showButton' true 'showFilter' true } } //subscribe to plant event              
+        'macro' <%     
+             <% $plant 'Usak-SN' CONTAINS %> <% 'Usak' 'plant' STORE 'Sinovel' 'manufacturer' STORE %>
+             <% $plant 'Usak-GW' CONTAINS %> <% 'Usak' 'plant' STORE 'Goldwind' 'manufacturer' STORE %>
+             <% '' 'manufacturer' STORE %> 2 SWITCH
+
+            [ $myreadtoken '~.*' { 'plant' $plant 'manufacturer' $manufacturer } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                     
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
-                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' ] 'selector' 'TurbineId' }  ] // Event definition                    
             }                
         %>            
     } 
@@ -70,7 +76,7 @@
             {                        
                 'data' [ NOW 2 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
                 'events' [
-    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    { 'type' 'variable' 'tags' [ 'startDate' ] 'selector' 'startDate' }
     ]                    
             }                
         %>            
@@ -85,7 +91,7 @@
             {                        
                 'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                      
                 'events' [
-    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    { 'type' 'variable' 'tags' [ 'endDate' ] 'selector' 'endDate' }
     ]                    
             }                
         %>            
@@ -136,7 +142,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
       'title' 'Origin'
       'macro' <% 
 
-        [  'Manufacturer' 'Buyer' ] 'statusList' STORE
+        [  'Manufacturer' 'Buyer' 'Environmental' ] 'statusList' STORE
         
         {
         'events' [ { 'tags' 'status_origin' 'type' 'variable' 'selector' 'status_origin' } ]
@@ -156,7 +162,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
       'title' 'Component'
       'macro' <% 
 
-        [  'Generator' 'Gearbox' 'Converter' 'Rotor' 'Pitch' 'Yaw' 'Electrical' 'Cooling' 'Auxilary' ] 'statusList' STORE
+        [  'Environmental' 'Generator' 'Gearbox' 'Converter' 'Rotor' 'Pitch' 'Yaw' 'Electrical' 'Cooling' 'Auxilary' ] 'statusList' STORE
         
         {
         'events' [ { 'tags' 'comp_code' 'type' 'variable' 'selector' 'comp_code' } ]
@@ -209,7 +215,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
     }
 
  {
-      'type' 'tabular' 'x' 0 'y' 1 'w' 6 'h' 8
+      'type' 'tabular' 'x' 1 'y' 1 'w' 6 'h' 8
       'title' 'Stoppages Table'
       'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|plant)'
                   // suscribe to events
@@ -217,12 +223,16 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
       }
       'macro' <%
 
-[ $myreadtoken '~WIND_SPEED.*' { 'plant' $plant } 
-   $startDate TOSTRING 
-	 $endDate TOSTRING
-      ] FETCH 'x' STORE
+        $TurbineId '|' JOIN 'TurbineId' STORE
+        '~(' $TurbineId + ')' + 'TurbineId' STORE
 
-[ $myreadtoken 'PLC_STATUS' {  'plant' $plant } 
+         <% $plant 'Usak-SN' CONTAINS %> <% 'Usak' 'plant' STORE 'Sinovel' 'manufacturer' STORE %>
+         <% $plant 'Usak-GW' CONTAINS %> <% 'Usak' 'plant' STORE 'Goldwind' 'manufacturer' STORE %>
+         <% '' 'manufacturer' STORE %> 2 SWITCH
+
+
+
+[ $myreadtoken 'PLC_STATUS' {  'plant' $plant 'TurbineId' $TurbineId } 
          $startDate 1 d - TOSTRING
          $endDate TOSTRING 
   ] FETCH 'data' STORE
@@ -239,16 +249,21 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
     $allbucket $b GET 'bucket' STORE
 
     $bucket LABELS 'TurbineId' GET 'turbine' STORE 
+    $bucket LABELS 'plant' GET 'plant' STORE 
     $bucket LABELS 'manufacturer' GET 'manu' STORE
+    
+      
+            
+
     //check for different manufacturers
     <% $manu 'Goldwind' == %> <% 
-   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
-   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
-   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standstill' STORE
-   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Starting' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
-   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
-   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
-   [ $bucket 7 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
+   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standstill' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Starting' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
+   [ $bucket 9 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
 
   [ $initial $stop $start $service ] 'gtslist' STORE
    $gtslist SIZE 1 - 'gtslen' STORE
@@ -261,16 +276,23 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
                       $ticks 0 GET 'start' STORE //start of status
                       $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
 
-                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE %>
-                      <% 'PT2M' DURATION 'tduration' STORE %> 1 SWITCH
+                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE
+                      
+                         //calculate lost power
+                    
+                      
+                       %>
+                      <% 'PT2M' DURATION 'tduration' STORE '0' 'expected' STORE %> 1 SWITCH
 
                       $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
                       $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE  //get human duration
 
+                      // calculate lost power
+
                       //check if stoppage is reported
                       $ticks 0 GET  $tduration + 2 m + 'endtick' STORE
-                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine } 
-                       $ticks 0 GET  $endtick ] FETCH 'report' STORE
+                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                       $ticks 0 GET ISO8601 $endtick ISO8601 ] FETCH 'report' STORE
                        <% $report [] == %> <% 'No' 'reported' STORE %> <% 'Yes' 'reported' STORE %> IFTE
 
                       $rows [ [ $turbine $manu $start $duration $status_name $reported ] ] APPEND 'rows' STORE //rows for display
@@ -315,17 +337,25 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
        0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE  //start of for
                       $ticks 0 GET 'start' STORE //start of status
                       $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
-                      // calculate stoppage duration
-                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE %>
-                      <% 'PT2M' DURATION 'tduration' STORE %> 1 SWITCH
+
+                      // calculate stoppage duration and power if duration is bigger than 2 m
+                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE 
+                      
+                      
+                      
+                      %>
+                      <% 'PT2M' DURATION 'tduration' STORE '0' 'expected' STORE %> 1 SWITCH
                       //add duration to new gts
                       $g $ticks 0 GET NaN NaN NaN $tduration ADDVALUE DROP
                       $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE // get human duration
 
+                      
+                     
+
                       //check if stoppage is reported
                       $ticks 0 GET  $tduration + 2 m + 'endtick' STORE
-                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine } 
-                       $ticks 0 GET  $endtick ] FETCH 'report' STORE
+                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                       $ticks 0 GET 2 m - ISO8601 $endtick ISO8601 ] FETCH 'report' STORE
                        <% $report [] == %> <% 'No' 'reported' STORE %> <% 'Yes' 'reported' STORE %> IFTE
 
                       $rows [ [ $turbine $manu $start $duration $status_name $reported ] ] APPEND 'rows' STORE //rows for display
@@ -380,7 +410,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
 
 
  {
-      'type' 'bar' 'x' 6 'y' 1 'w' 6 'h' 2
+      'type' 'bar' 'x' 7 'y' 1 'w' 5 'h' 2
       'title' 'Types'
       'options' { 'eventHandler' 'type=(variable|data),tag=(result)'
                   // suscribe to events
@@ -456,13 +486,17 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
     }
 
     {
-      'type' 'bar' 'x' 6 'y' 3 'w' 4 'h' 2
+      'type' 'bar' 'x' 7 'y' 3 'w' 3 'h' 2
       'title' 'Components'
       'options' { 'eventHandler' 'type=(variable|data),tag=(startDate|endDate|plant)'
                   // suscribe to events
         'tabular' { 'fixedWidth' true }
       }
       'macro' <%
+
+         <% $plant 'Usak-SN' CONTAINS %> <% 'Usak' 'plant' STORE 'Sinovel' 'manufacturer' STORE %>
+         <% $plant 'Usak-GW' CONTAINS %> <% 'Usak' 'plant' STORE 'Goldwind' 'manufacturer' STORE %>
+         <% '' 'manufacturer' STORE %> 2 SWITCH
 
           [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant } 
             $startDate TOSTRING $endDate TOSTRING  ] FETCH 'y' STORE  // get the status tick to update
@@ -561,6 +595,10 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
       }
       'macro' <%
 
+        <% $plant 'Usak-SN' CONTAINS %> <% 'Usak' 'plant' STORE 'Sinovel' 'manufacturer' STORE %>
+         <% $plant 'Usak-GW' CONTAINS %> <% 'Usak' 'plant' STORE 'Goldwind' 'manufacturer' STORE %>
+         <% '' 'manufacturer' STORE %> 2 SWITCH
+
           [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant } 
             $startDate TOSTRING $endDate TOSTRING  ] FETCH 'y' STORE  // get the status tick to update
             [] 'rows' STORE
@@ -621,13 +659,16 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
     }
 
      {
-      'type' 'tabular' 'x' 6 'y' 5 'w' 6 'h' 3
+      'type' 'tabular' 'x' 7 'y' 5 'w' 5 'h' 3
       'title' 'Reported Status'
       'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|plant)'
                   // suscribe to events
         'tabular' { 'fixedWidth' true }
       }
       'macro' <%
+        <% $plant 'Usak-SN' CONTAINS %> <% 'Usak' 'plant' STORE 'Sinovel' 'manufacturer' STORE %>
+         <% $plant 'Usak-GW' CONTAINS %> <% 'Usak' 'plant' STORE 'Goldwind' 'manufacturer' STORE %>
+         <% '' 'manufacturer' STORE %> 2 SWITCH
                [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant } 
             $startDate TOSTRING $endDate TOSTRING  ] FETCH 'y' STORE  // get the status tick to update
             [] 'rows' STORE

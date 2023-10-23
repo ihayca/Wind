@@ -169,8 +169,8 @@
       //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
       //$startDate TOTIMESTAMP 'start' STORE
       $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
-      <% $valuetype 'Value' == %> <% [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'bucket' STORE %>
-      <% [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'bucket' STORE %>
+      <% $valuetype 'Value' == %> <% [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE SORT 'bucket' STORE %>
+      <% [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE SORT 'bucket' STORE %>
       1 SWITCH
 
       $bucket $endDate ISO8601 $startDate ISO8601 TIMECLIP 'bucket' STORE // we took 1 day before for alignment, so correct here

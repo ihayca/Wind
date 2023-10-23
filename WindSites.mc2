@@ -859,13 +859,13 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
      $data 0 GET LABELS 'manufacturer' GET 'manu' STORE
       <% $manu 'Goldwind' == %> <% 
           [ $data [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER 'gwdata' STORE
-          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 1 filter.any.eq ] FILTER  'init' RENAME 'gwinit' STORE
-          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 2 filter.any.eq ] FILTER  'stop' RENAME 'gwstop' STORE
-          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 3 filter.any.eq ] FILTER  'nowind' RENAME 'gwnowind' STORE
-          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 4 filter.any.eq ] FILTER  'start' RENAME 'gwstart' STORE
-          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 5 filter.any.eq ] FILTER  'runup' RENAME 'gwrunup' STORE
-          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 6 filter.any.eq ] FILTER  'powprod' RENAME 'gwpowprod' STORE
-          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 7 filter.any.eq ] FILTER  'service' RENAME 'gwservice' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 0 filter.any.eq ] FILTER  'init' RENAME 'gwinit' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 1 filter.any.eq ] FILTER  'stop' RENAME 'gwstop' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 2 filter.any.eq ] FILTER  'nowind' RENAME 'gwnowind' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 3 filter.any.eq ] FILTER  'start' RENAME 'gwstart' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 4 filter.any.eq ] FILTER  'runup' RENAME 'gwrunup' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 5 filter.any.eq ] FILTER  'powprod' RENAME 'gwpowprod' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 9 filter.any.eq ] FILTER  'service' RENAME 'gwservice' STORE
         %>
         <% $manu 'Sinovel' == %> <%
           [ $data [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER 'sndata' STORE
@@ -989,13 +989,13 @@ $listOfTurbines SIZE 'numTurbines' STORE
    $tur_stat_data 0 GET LABELS 'manufacturer' GET 'manu' STORE
 
     <% $manu 'Goldwind' == %> <% 
-   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
-   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
-   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standstill' STORE
-   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Starting' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
-   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
-   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
-   [ $bucket 7 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
+   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standstill' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Starting' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
+   [ $bucket 9 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
 
   [ $initial $stop $standstill $start $run $power $service ] 'gtslist' STORE
    $gtslist SIZE 1 - 'gtslen' STORE
