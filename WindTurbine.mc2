@@ -145,7 +145,7 @@
 
         [ $year $month $day ]  TSELEMENTS-> ISO8601 'start' STORE
         $total_data NOW $start TIMECLIP 0 GET VALUES 'values' STORE 
-        $values -1 GET $values 0 GET - TODOUBLE 1000 / 'day_data' STORE
+        <% $values [] == %> <% 0.0 'day_data' STORE %> <% $values -1 GET $values 0 GET - TODOUBLE 1000 / 'day_data' STORE %> IFTE // if no generation until midnight
         [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 1000 / 'total_data' STORE
 
       %> 
@@ -481,8 +481,9 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE 
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -560,8 +561,9 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  //[ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE 
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -1283,7 +1285,9 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    MAKEGTS
   'data' RENAME 'data' STORE
 
-   [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
+   [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE
+
+   // find best curve of the turbine 
    
  [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'plant' $plant 'TurbineId' $TurbineId } 
    //$startDate TOSTRING 
@@ -1306,8 +1310,9 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -1362,6 +1367,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
   'data' RENAME 'data' STORE
 
    [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
+
     [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'plant' $plant 'TurbineId' $TurbineId } 
    //$startDate TOSTRING 
 	 //$endDate TOSTRING
@@ -1383,8 +1389,9 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -1642,9 +1649,9 @@ MAKEGTS %>
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 'bestdata' STORE
-  [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE // arithmetic mean curve
-  //$bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
+  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  //[ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE // arithmetic mean curve
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
