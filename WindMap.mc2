@@ -2,13 +2,12 @@
 // @theme light
 {
   //'type' 'flex'
-  'cellHeight' 100
+  'cellHeight' 80
   'options' { 
       'scheme' 'WARP10'
       'timeZone' 'Europe/Istanbul'
-      'autoRefresh' 600   
-      'showErrors' true
-      'showLoader' true  
+      'autoRefresh' 600
+      'showLoader' true     
          }
 
 //variables		 
@@ -27,7 +26,7 @@
 //Site selection
    {                
     'title' 'Plant'                
-    'x' 0 'y' 0 'w' 1 'h' 1                
+    'x' 0 'y' 0 'w' 2 'h' 1                
     'type' 'input:list'                
     'macro' 
      <%                     
@@ -43,7 +42,7 @@
 //Date Selections
 	  {                
         'title' 'Start Date'                
-        'x' 1 'y' 0 'w' 2 'h' 1              
+        'x' 2 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
                               
@@ -58,7 +57,7 @@
 	
 	  {                
         'title' 'End  Date'                
-        'x' 3 'y' 0 'w' 2 'h' 1              
+        'x' 4 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
                               
@@ -71,53 +70,22 @@
         %>            
      } 
 
-
-  {  
-    'title' 'Active Power'   
-    'options' { 'autoRefresh' 10
-                'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
-		'maxValue' 100
-		'unit' 'MW'
-				}
-    'x' 5 'y' 0 'w' 2 'h' 1
-    'type' 'display' 	
-    'macro' <%    
-      [ $myreadtoken '~(GW_PLANT_AVAILABLE_ACTIVE_POWER|SN_TOTAL_POWER_MW).*' { 'plant' $plant } 
-           //  $startDate TOSTRING 
-      // $endDate TOSTRING
-       NOW 1 d
-      ] FETCH 'y' STORE
-  [ $y bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE 'plant_data' STORE
- 
-     // reduce all turbine totals to totalsum, zero if no energy
-      <% $plant_data [] == %>
-      <% 0.00 'plant_pwr' STORE %>
-      <% $plant_data VALUES 0 GET 0 GET 'plant_pwr' STORE %>
-      1 SWITCH 
-
-     <' 
-      %.2f
-    '> 
-    [ $plant_pwr ] STRINGFORMAT 'plant_pwr' STORE
-       $plant_pwr
-    %>
-    }
-
  {  
     'title' 'Average Wind'   
-    'options' { 'autoRefresh' 10
+    'options' { //'autoRefresh' 10
+    'showLoader' true
                 'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
 				'maxValue' 100
 		'unit' 'm/s'
 				}
-    'x' 7 'y' 0 'w' 2 'h' 1
+    'x' 6 'y' 0 'w' 2 'h' 1
     'type' 'display' 	
     'macro' <%    
  // calculate wind average
-    [ $myreadtoken '~(GW_AVERAGE_WIND_SPEED|SN_AVERAGE_WIND_SPEED).*' { 'plant' $plant } 
-      //   $startDate TOSTRING 
-	    //   $endDate TOSTRING
-      NOW 1 d
+    [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
+        $startDate TOSTRING 
+	      $endDate TOSTRING
+      //NOW 1 d
       ] FETCH 'wind_data' STORE
    // [ $wind_data bucketizer.mean NOW MAXLONG d 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE VALUES 0 GET 0 GET 'wind_avg' STORE  //average wind
    [ $wind_data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'wind_avg' STORE
@@ -130,135 +98,36 @@
     $data
     %>
     }
-   
-    
-    			{  
-    'title' 'Turbines In Production / Total'   
-    'x' 9 'y' 0 'w' 4 'h' 1 
-    	  'options' { 'autoRefresh' 10
-          'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
-				}
-    'type' 'display' 	
-    'macro' <%    
-    [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'total_turbines' STORE
 
-   [ $myreadtoken '~(GW_NUMBER_OF_AVAILABLE_TURBIN|SN_NUMBER_OF_AVAILABLE_TURBIN).*' { 'plant' $plant } 
-        // $startDate TOSTRING 
-	      // $endDate TOSTRING
-        NOW 1 d
-      ] FETCH 'avail' STORE
-   [ $avail bucketizer.last NOW 1 d 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'avail_turbine' STORE
-
-
-   	  {
-	  'data' [ $avail_turbine TOINTEXACT TOSTRING ' / ' $total_turbines TOINTEXACT TOSTRING + + ]
-	  'params' [ { 'maxValue' $total_turbines } ]
-	  
-	  }
- 
-    %>
-    }
-
-   			{  
-    'title' 'Plant Reactive Power'   
-    'x' 0 'y' 1 'w' 2 'h' 1 
-    	  'options' { 'autoRefresh' 10
-                'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
-                'unit' 'MVAR'
-				}
-    'type' 'display' 	
-    'macro' <%    
-      [ $myreadtoken '~SN_TOTAL_REACTIVE_POWER_MVAR.*' { 'plant' $plant } 
-           $startDate TOSTRING 
-	   $endDate TOSTRING
-         //NOW 1 d
-      ] FETCH 'data' STORE
-	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
-    // [ $data bucketizer.sum NOW MAXLONG d 0 ] BUCKETIZE 'data' STORE // sum of each turbine seperately and aligned
-    // [ $data [] reducer.sum ] REDUCE 'data' STORE
-    [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'data' STORE 
- 
-// reduce all turbine totals to totalsum, zero if no energy
-<% $data [] == %>
-<% 0.0 'tostring' STORE %>
-<% $data 'tostring' STORE %>  // VALUES 0 GET 0 GET 1000000 / 6 /
- 1 SWITCH 
-
-<'
-%.2f
-'> 
-[ $tostring ] STRINGFORMAT 'data' STORE
-$data
- 
-    %>
-    }
-
-       {  
-    'title' 'Capacity Factor'   
-    'options' { 'autoRefresh' 10
-                'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
-		'maxValue' 100
-		'unit' 'pct' 
-				}
-    'x' 2 'y' 1 'w' 2 'h' 1
-    'type' 'display' 	
-    'macro' <%    
-
-    %>
-    }
-
-    {  
-    'title' 'Time Availability'   
-    'options' { 'autoRefresh' 10
-                'eventHandler' 'type=variable,tag=(plant|startDate|endDate|result)'
-				'maxValue' 100
-		'unit' 'pct' 
-				}
-    'x' 4 'y' 1 'w' 2 'h' 1
-    'type' 'display' 	
-    'macro' <%    
-  $values 
-    %>
-    }
-
-     {  
-    'title' 'Energy Availability'   
-    'options' { 'autoRefresh' 10
-                'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
-				'maxValue' 100
-		'unit' 'pct' 
-				}
-    'x' 6 'y' 1 'w' 2 'h' 1
-    'type' 'display' 	
-    'macro' <%    
-   [ $myreadtoken '~.*' { 'plant' 'Yalova' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines_Yalova' STORE 
-[ $myreadtoken '~.*' { 'plant' 'Usak' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines_Usak' STORE
-[ $myreadtoken '~.*' { 'plant' 'Soke' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines_Soke' STORE
-$listOfTurbines_Yalova SIZE 'numYalova' STORE
-$listOfTurbines_Usak SIZE 'numUsak' STORE
-$listOfTurbines_Soke SIZE 'numSoke' STORE
-[] 'yalovalist' STORE
-[] 'usaklist' STORE
-[] 'sokelist' STORE
-
-    %>
-    }
     
     {
     'title' 'Avg. Wind Direction / Speed'
-    'options' { 'autoRefresh' 10
+    'options' { //'autoRefresh' 10
                 'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate)'
 		'showRangeSelector' true
 
 				}
-    'x' 8 'y' 1 'w' 4 'h' 3
+    'x' 8 'y' 2 'w' 4 'h' 3
     'type' 'bar-polar' 'macro' <%
-	
- 	[ $myreadtoken '~(GW_AVERAGE_WIND_SPEED|GW_AVERAGE_WIND_DIRECTION).*' { 'plant' $plant } 
+
+      <% $plant 'Usak' == %> <%
+        [ $myreadtoken '~(GW_AVERAGE_WIND_SPEED|GW_AVERAGE_WIND_DIRECTION).*' { 'plant' $plant } 
          $startDate TOSTRING 
-	 $endDate TOSTRING
+	       $endDate TOSTRING
          //NOW 1 d
-      ] FETCH 'data' STORE
+        ] FETCH 'data' STORE
+       %>
+	    <% $plant 'Yalova' == %> <% 
+        [ $myreadtoken '~(AverageWindSpeed|AverageWindDirection).*' { 'plant' $plant } 
+         $startDate TOSTRING 
+	       $endDate TOSTRING
+         //NOW 1 d
+        ] FETCH 'data' STORE
+      %>
+      <% $plant 'Soke' == %> <% 
+
+      %> <% %> 3 SWITCH
+ 	
 	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE
      [ $data 0 GET bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'degrees' STORE  //align times
      [ $data 1 GET bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'speed' STORE   // align times
@@ -804,36 +673,17 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
 	  	        
     }
 
-{
-    'title' 'Active Power'
-    'options' { 'autoRefresh' 10
-                'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
-								'showRangeSelector' true
-
-				}
-    'x' 0 'y' 2 'w' 4 'h' 2
-    'type' 'line' 'macro' <%
-     [ $myreadtoken '~ACTIVE_POWER.*' { 'plant' $plant } 
-         $startDate TOSTRING 
-		 $endDate TOSTRING
-      ] FETCH 'data' STORE
-	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes
-     [ $data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE 'data' STORE
-      $data
-      %>
-    }
-
     {
     'title' 'Average Wind'
-    'options' { 'autoRefresh' 10
+    'options' { //'autoRefresh' 10
                 'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
-								'showRangeSelector' true
+								//'showRangeSelector' true
 
 				}
-    'x' 4 'y' 2 'w' 4 'h' 2
+    'x' 8 'y' 0 'w' 4 'h' 2
     'type' 'line' 'macro' <%
  
-      	[ $myreadtoken '~(GW_AVERAGE_WIND_SPEED|SN_AVERAGE_WIND_SPEED).*' { 'plant' $plant } 
+      	[ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
          $startDate TOSTRING 
 	       $endDate TOSTRING
          //NOW 1 d
@@ -847,12 +697,12 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
 
     	{                
         'title' 'Asset Map'
-        'options' { 'autoRefresh' 10
+        'options' { //'autoRefresh' 10
             'eventHandler' 'type=variable,tag=(plant|startDate|endDate)' }                
-        'x' 0 'y' 4 'w' 6 'h' 5             
+        'x' 0 'y' 1 'w' 8 'h' 8             
         'type' 'map'                
         'macro' <%  
-
+  /*  //here is for future use with PLC_STATUS available
      [ $myreadtoken '~PLC_STATUS.*' { 'plant' $plant } 
          $startDate TOSTRING 
 	     $endDate TOSTRING
@@ -881,7 +731,7 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
           [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 6 filter.any.eq ] FILTER  'highwind' RENAME 'snhighwind' STORE
 
         %> 1 SWITCH
-
+      */
      // get average wind for creating heatmap  
         [ $myreadtoken '~WIND_SPEED.*' { 'plant' $plant } 
         $startDate TOSTRING 
@@ -890,12 +740,20 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
           ] FETCH 'g' STORE
 	  $g { '.app' '' '.uuid' '' } RELABEL 'g' STORE //relabel the atributes
 	    [ $g bucketizer.mean 0 0 1 ] BUCKETIZE 'g' STORE
-	  $g MERGE 'speeds' STORE
+	  $g MERGE 'speeds' RENAME 'speeds' STORE
+    $speeds VALUES FLATTEN MAX 'max' STORE
       
       { 
-    'data'  [ $speeds $gwinit $gwstop $gwnowind $gwstart $gwrunup $gwpowprod $gwservice $snoffline $snstart $snnowind $snprod $snerror $snservice $snlowtemp $snhighwind ] 
+    'data'  [ $speeds $g ] // $gwinit $gwstop $gwnowind $gwstart $gwrunup $gwpowprod $gwservice $snoffline $snstart $snnowind $snprod $snerror $snservice $snlowtemp $snhighwind ] 
     'params' [
-      { 'map' { 'heatmap' true } }
+      { 'map' { 'heatmap' true }   } //'map' { 'heatmap' true }  } 
+      0 $g SIZE 1 - <% 'i' STORE { "key" 'T-' $g $i GET LABELS 'TurbineId' GET +  'render' 'marker' 'marker' 'turbine' 'map' { 'iconSize' [ 28 28 ] }
+            } %> FOR
+      
+      //{ } // "key" "speeds" "render" "marker" "marker" "circle"
+      // 'render' 'weightedDots' "maxValue" $max "minValue" 0 
+      
+      /*
       1 $gwinit SIZE <% 'i' STORE { 'color' '#008000' 'render' 'marker' } %> FOR // green for productions 
       1 $gwstop SIZE <% 'i' STORE { 'color' '#ff1030' 'render' 'marker' } %> FOR // red for gw stop
       1 $gwnowind SIZE <% 'i' STORE { 'color' '#0000FF' 'render' 'marker' } %> FOR // blue for standby 
@@ -911,238 +769,13 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
       1 $snservice SIZE <% 'i' STORE { 'color' '#FFFF00' 'render' 'marker' } %> FOR // yellow for service
       1 $snlowtemp SIZE <% 'i' STORE { 'color' '#ff1030' 'render' 'marker' } %> FOR // red for gw stop
       1 $snhighwind SIZE <% 'i' STORE { 'color' '#ff1030' 'render' 'marker' } %> FOR // red for gw stop       
+      */
       ]
-    'globalParams' { 'map' { 'mapType' 'SATELLITE' 'heatRadius' 25 'heatOpacity' 0.1 } } 
+    'globalParams' { 'map' { 'mapType' 'SATELLITE' 'heatRadius' 25 'heatOpacity' 0.1 'track' true } } 
       }
         %>            
     } 
-
-// Power Curve Performance Table
-
-    {
-      'type' 'tabular' 'x' 6 'y' 4 'w' 6 'h' 4
-      'title' 'Wind Turbines'
-      'options' { 'autoRefresh' 60
-      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
-                        }
-      'macro' <%
- [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
-$listOfTurbines SIZE 'numTurbines' STORE
-[] 'turbinelist' STORE
-[] 'pwrlist' STORE
-[] 'windlist' STORE
-[] 'timelist' STORE
-
-// get all plc status
- [ $myreadtoken '~(PLC_STATUS).*' { 'plant' $plant } 
-       $startDate TOSTRING 
-       $endDate TOSTRING
-      ] FETCH 'status_data' STORE
-//FOR plant turbines
-1 $numTurbines <% 
-  'turbineid' STORE 
-  //get total production
-     [ $myreadtoken '~(ACTIVE_POWER|WIND_SPEED).*' { 'plant' $plant 'TurbineId' $turbineid TOSTRING } 
-         $startDate TOSTRING $endDate TOSTRING
-      ] FETCH 'inputs' STORE //get all wind speed for a period
-
-    <% $inputs [] == %>  // check if turbine has data for this time period
-    <%  '0' 'curvescore'  STORE
-        '0' 'act_pwr'  STORE
-        '0' 'act_wind'   STORE
-        '0' 'time_avail'  STORE  %>
-    <%  
-     $inputs LASTTICK  "lastBucket" STORE
-     10 m "bucketSpan" STORE // 1 minute
-     $inputs FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
-     $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
-     [ $inputs bucketizer.mean $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE
-     $bucket [ NaN NaN NaN 0 ] FILLVALUE 'bucket' STORE // fill all empty ticks with zero
-
-     $bucket 0 GET 'wind' STORE
-     $bucket 1 GET 'pow' STORE
-
-
-      // reduce all turbine totals to totalsum, zero if no energy
-      <% $pow [] == %>
-      <% 0.0 'act_pwr' STORE %>
-      <% [ $pow bucketizer.last NOW 1 d 0 ] BUCKETIZE 'act_pwr' STORE // sum of each turbine seperately and aligned
-      $act_pwr VALUES 0 GET 0 GET 'act_pwr' STORE %>
-      1 SWITCH 
-        <'
-        %.2f
-        '> 
-        [ $act_pwr ] STRINGFORMAT 'act_pwr' STORE
-
-      // calculate active wind 
-
-      <% $wind [] == %>
-      <% 0.0 'act_wind' STORE %>
-      <% [ $wind bucketizer.last NOW 1 d 0 ] BUCKETIZE 'act_wind' STORE 
-      $act_wind VALUES 0 GET 0 GET 'act_wind' STORE %>
-      1 SWITCH 
-      <'
-      %.2f
-      '> 
-      [ $act_wind ] STRINGFORMAT 'act_wind' STORE
-
-      // time availability of the turbine
-            // check if no data
-      <% $wind [] == %>
-      <% 0.0 'time_avail' STORE %>
-      <%  
-        //fetch the most recent point of every GTS this token can access
-
-    [ $status_data [] { 'TurbineId' $turbineid TOSTRING } filter.bylabels ] FILTER  'tur_stat_data' STORE
-   
-    $endDate  'lastbucket' STORE
-   [ $tur_stat_data bucketizer.last $lastbucket 5 s 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'bucket' STORE
-   //[ $data bucketizer.first 0 1 m 0 ] BUCKETIZE  SORT 'bucket' STORE
-   $tur_stat_data 0 GET LABELS 'manufacturer' GET 'manu' STORE
-
-    <% $manu 'Goldwind' == %> <% 
-   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
-   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
-   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standstill' STORE
-   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Starting' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
-   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
-   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
-   [ $bucket 9 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
-
-  [ $initial $stop $standstill $start $run $power $service ] 'gtslist' STORE
-   $gtslist SIZE 1 - 'gtslen' STORE
-   [] 'newlist' STORE
-
-   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE  
-    
-    NEWGTS $status 0 GET NAME RENAME 'g' STORE
-     <% $statuslen 0 >= %> <%
-       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE
-           <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'duration' STORE %>
-           <% 'PT2M' DURATION 'duration' STORE %> 1 SWITCH
-           $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
-                    %> FOR
-                     %> 
-      <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP %> 1 SWITCH
-
-    $newlist [ $g ]  APPEND 'newlist' STORE
-   %> FOR 
- 
-  [ $newlist bucketizer.sum 0 0 1 ] BUCKETIZE 'list' STORE  
-  0 'total' STORE
-  0 'avail' STORE
-  0 $list SIZE 1 - <% 'i' STORE 
-        $list $i GET NAME 'status_name' STORE
-        $list $i GET VALUES 0 GET 'time' STORE
-        <% $status_name 'Initialization' == %> <% $total $time + 'total' STORE %>
-        <% $status_name 'Stop' == %> <% $total $time + 'total' STORE %>
-        <% $status_name 'Standstill' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
-        <% $status_name 'Starting' == %> <% $total $time + 'total' STORE %>
-        <% $status_name 'Run Up' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
-        <% $status_name 'Power Production' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
-        <% $status_name 'Service' == %> <% $total $time + 'total' STORE %>
-        <% $total $time + 'total' STORE %> 7 SWITCH
-                 %> FOR 
-    %>
-    <%
-
-   [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
-   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Start' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
-   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Standby' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standby' STORE
-   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'production' STORE
-   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Error' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'error' STORE
-   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
-   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Low Temp.' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'lowtemp' STORE
-   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'High Wind' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'highwind' STORE
-    
-  [ $offline $start $standby $production $error $service $lowtemp $highwind ] 'gtslist' STORE
-   $gtslist SIZE 1 - 'gtslen' STORE
-   [] 'newlist' STORE
-
-   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE  
-    
-    NEWGTS $status 0 GET NAME RENAME 'g' STORE
-     <% $statuslen 0 >= %> <%
-       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE
-           <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'duration' STORE %>
-           <% 'PT2M' DURATION 'duration' STORE %> 1 SWITCH
-           $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
-                    %> FOR
-                     %> 
-      <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP %> 1 SWITCH
-
-    $newlist [ $g ]  APPEND 'newlist' STORE
-   %> FOR 
- 
-  [ $newlist bucketizer.sum 0 0 1 ] BUCKETIZE 'list' STORE  
-  0 'total' STORE
-  0 'avail' STORE
-  0 $list SIZE 1 - <% 'i' STORE 
-        $list $i GET NAME 'status_name' STORE
-        $list $i GET VALUES 0 GET 'time' STORE
-        <% $status_name 'Offline' == %> <% $total $time + 'total' STORE %>
-        <% $status_name 'Start' == %> <% $total $time + 'total' STORE %>
-        <% $status_name 'Standby' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
-        <% $status_name 'Production' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
-        <% $status_name 'Error' == %> <% $total $time + 'total' STORE %>
-        <% $status_name 'Service' == %> <% $total $time + 'total' STORE %>
-        <% $status_name 'Low Temp.' == %> <% $total $time + 'total' STORE %>
-        <% $total $time + 'total' STORE %> 7 SWITCH
-                  %> FOR
-    %> 1 SWITCH
-
-
-
-$avail TODOUBLE $total TODOUBLE  / 100 * 'time_avail' STORE    
-
   
-        %>
-      1 SWITCH 
-
-// calculate turbine perf according to vendor power curve
-
- %> 1 SWITCH
-//$turbinelist [ $curvescore ] APPEND 'turbinelist' STORE
-$pwrlist [ $act_pwr ] APPEND 'pwrlist' STORE
-$windlist [ $act_wind ] APPEND 'windlist' STORE
-$timelist [ $time_avail ] APPEND 'timelist' STORE 
-
-      %> FOR
-
-        {
-          'columns' [ 'Turbine' 'Active Power' 'WindSpeed' 'Time Availability' ] //'Energy Availability' ]
-          'rows' [
-      //FOR yalova turbines
-     1 $numTurbines <% 'i' STORE
-                       $i 1 - 'index' STORE
-                     // $turbinelist $index GET 'perf' STORE
-                      $pwrlist $index GET 'pwr' STORE
-                      $windlist $index GET 'wind' STORE
-                      $timelist $index GET 'time' STORE
-                      [  $i $pwr $wind $time ] // $perf ]
-      %> FOR 
-         
-         
-          ]
-        } 
-        'values' STORE
-    
-        { 'data' $values 
-          'events' [ { 'type' 'variable' 'tags' [ 'result' ] 'value' $values }  ]  // send time avail and energy avail to other widgets
-          'globalParams' {
-    'tabular' {
-      'fixedWidth' true 
-      'sortable' true 
-      'filterable' true 
-    }
-  }
-  } // data can also be a gts or a list thereof
-      %>
-    }
-
-	
-
-    
 
 	
   ]

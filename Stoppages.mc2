@@ -7,7 +7,8 @@
   'options' { 
     'showErrors' true  'eventHandler' 'type=popup,tag=dashboard'
       'scheme' 'CHARTANA'
-            'timeZone' 'Europe/Istanbul'      
+            'timeZone' 'Europe/Istanbul' 
+             'showLoader' true       
          }
 		 
   'vars' {

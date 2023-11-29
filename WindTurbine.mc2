@@ -7,6 +7,7 @@
       'scheme' 'BELIZE'
       'timeZone' 'Europe/Istanbul'   
       'showErrors' true
+      'showLoader' true
        
             }
 		 
@@ -36,9 +37,11 @@
 	{                
         'title' 'Turbine'                
         'x' 1 'y' 0 'w' 1 'h' 1              
-        'type' 'input:list'                
-        'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                    
+        'type' 'input:list' 
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)' }               
+        'macro' <%     
+                         
+            [ $myreadtoken '~.*' { 'plant' $plant  } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                    
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
@@ -233,13 +236,21 @@
     'type' 'display' 	
     'macro' <%    
    //fetch the most recent point of every GTS this token can access
-    [ $myreadtoken '~EnvTemAve.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+    [ $myreadtoken '~EnvTem.*' { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 		 $endDate TOSTRING
       ] FETCH 'data' STORE
 	  	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE 
 
-	 [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 
+	 [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'temp' STORE
+
+    <' 
+      %.2f
+    '> 
+    [ $temp ] STRINGFORMAT 'temp' STORE
+
+    $temp
+
     %>
     }
 	
@@ -247,7 +258,7 @@
     'title' 'Wind Average'   
     'options' { 'autoRefresh' 10
                 'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
-		'maxValue' 25
+		'maxValue' 35
 		'unit' ' m/s'
 		'description' 'm/s'
 				}
@@ -416,7 +427,7 @@ $avail TODOUBLE $total TODOUBLE  / 100 * 'time_avail' STORE
 	
 			{  
     'title' 'Energy Availability'   
-    'options' { 'autoRefresh' 10
+    'options' { //'autoRefresh' 10
                 'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
 		'maxValue' 100
 				}
@@ -465,7 +476,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE  NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -481,9 +492,9 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  $name RENAME 3000 2850 TIMECLIP 'bestdata' STORE
   // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE 
-  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 3000 2850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -545,7 +556,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -561,9 +572,9 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  $name RENAME 3000 2850 TIMECLIP 'bestdata' STORE
   //[ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE 
-  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 3000 2850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -1373,7 +1384,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -1633,7 +1644,7 @@ MAKEGTS %>
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
       
-     $x [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS  NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE  NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -1649,9 +1660,9 @@ MAKEGTS %>
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
-  //[ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE // arithmetic mean curve
-  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
+  $name RENAME 3000 2850 TIMECLIP 'bestdata' STORE
+ // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 3000 2850 TIMECLIP 'curve' STORE // arithmetic mean curve
+ $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 3000 2850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR

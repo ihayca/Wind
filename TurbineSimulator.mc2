@@ -1,0 +1,429 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+
+  'type' 'flex'
+  'cellHeight' 80   
+  'options' { 
+      'scheme' 'CHARTANA'
+            'timeZone' 'AUTO' 
+    'showLoader' true     
+         }
+		 
+  'vars' {
+      'plant' 'Usak'
+      'SimManufacturer' 'Select'
+      
+      'TurbineId' '1'
+      'TurbineId2' 'Select'
+      'real' 0
+      'sim' 0
+      'curve' '0'
+      
+      'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
+          'endDate' NOW //1658913094000000 //604800000000
+
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+}
+          
+          
+  'tiles' [
+    
+		
+
+{                
+        'title' 'Plant'                
+        'x' 0 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+ 
+	
+	{                
+        'title' 'Start Date'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 6 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                         
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+    
+    {                
+        'title' 'Manufacturer'                
+        'x' 8 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+          // [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE     
+          [ 'Select' 'Goldwind' 'Sinovel' 'Vestas' ] 'listOfMans' STORE                
+            {                        
+                'data' $listOfMans                        
+                'globalParams' { 'input' { 'value' $SimManufacturer } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'SimManufacturer'  ] 'selector' 'SimManufacturer' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Simulated Turbine' 
+        'options' { 'eventHandler' 'type=(variable),tag=(SimManufacturer)'
+                      } //subscribe to SimManufacturer event                 
+        'x' 10 'y' 0 'w' 2 'h' 1              
+        'type' 'input:list'                
+        'macro' <% 
+            <% $SimManufacturer 'Goldwind' == %> <% [ 'Select' 'GW165-6MW' ] 'listOfTurbines' STORE %> 
+            <% $SimManufacturer 'Sinovel' == %> <% [ 'Select'  'SN1500' ] 'listOfTurbines' STORE %> 
+            <% $SimManufacturer 'Vestas' == %> <% [ 'Select' 'V112' ] 'listOfTurbines' STORE  %>
+            <% %> 3 SWITCH             
+                               
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId2' 'SimManufacturer' ] 'selector' 'TurbineId2' }  ] // Event definition                    
+            }                
+        %>            
+    }  
+    
+
+    	{
+    'title' 'Real Production' 
+    'options' { 
+                'eventHandler' 'type=(variable|zoom|focus),tag=(chart1|TurbineId|plant|startDate|endDate)'
+                'showLegend' true
+                'showRangeSelector' true
+
+				}
+    'x' 0 'y' 2 'w' 6 'h' 4
+    'type' 'line' 'macro' <%
+    
+     [ $myreadtoken '~WIND_SPEED.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'data1' STORE
+	   $data1 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data1' STORE //relabel the atributes
+    
+     [ $myreadtoken '~ACTIVE_POWER.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'data2' STORE
+	   $data2 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data2' STORE //relabel the atributes
+	   
+
+       //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      10 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $data1 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data1' STORE
+      [ $data2 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'data2' STORE
+	   
+     [ $data2 bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 6 / TOLONG 'realpow' STORE
+
+	 
+	  { 'data' [ $data2 $data1  ] 'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+        'events' [ { 'type' 'variable' 'tags' [  'realpow' ] 'value' { 'real' $realpow } }
+        { 'tags' [ 'chart2' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'chart2' ] 'type' 'focus' } // send focus event on channel "chart2"
+         
+      ]
+      
+      }
+     
+      %>
+    }
+    
+        	{
+        'title' 'Simulated Production' 
+
+    'options' { 
+                'eventHandler' 'type=(variable|zoom|focus),tag=(chart2|TurbineId|plant|TurbineId2|startDate|endDate)'
+                'showLegend' true
+                'showRangeSelector' true
+
+				}
+    'x' 6 'y' 2 'w' 6 'h' 4
+    'type' 'line' 'macro' <%
+    
+   [ $myreadtoken '~WIND_SPEED.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'data1' STORE
+	   $data1 { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data1' STORE //relabel the atributes
+    
+       //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      10 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $data1 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 0 GET 'data1' STORE
+      $data1 100 * 'wind' STORE
+
+
+	  <% $TurbineId2 'GW165-6MW' == %> <% 
+        [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+            1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 ]  // ticks
+            [] [] []             // latitudes longitudes and elevations
+        [  0.0 71.93 176.19 309.28 467.23 654.11 878.35 1142.83
+                           1458.27 1821.29 2235.62 2693.52 3204.79 3744.81 4281.41 4766.49 
+                           5175.59 5513.27 5767.25 5913.71 5973.0 5992.50 5995.0 
+                           6000.0 6000.0 6000.0 6000.0 6000.0 6000.0 6000.0 6000.0
+                           5993.88 5991.75 5936.25 5802.50 5503.0 5091.0
+                           4624.25 4109.25 3553.25 3073.50 2575.25 2187.75 1848.61
+                           ] // values
+        MAKEGTS 'Goldwind' RENAME 'Goldwind' STORE
+        [ $Goldwind bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
+       %>
+	  <% $TurbineId2 'SN1500' == %> <% 
+       [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+               [] [] []             // latitudes longitudes and elevations
+               [ 0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410
+                           458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 
+                           1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0  1500.0
+                            1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0
+                            1500.0 1500.0 ] // values
+              MAKEGTS 'Sinovel' RENAME 'Sinovel' STORE
+        [ $Sinovel bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
+       %>
+	  <% $TurbineId2 'V112' == %> <% 
+        [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+        1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+        [] [] []             // latitudes longitudes and elevations
+        [  0.0 7.0 53.0 123.0 208.0 309.0 427.0 567.0
+                                732.0 927.0 1149.0 1401.0 1688.0 2006.0 2348.0 2693.0 
+                                3011.0 3252.0 3388.0 3436.0 3448.0 3450.0 3450.0 
+                                3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 
+                                3450.0 3450.0 3450.0 3450.0 3450.0 3450.0  3450.0
+                                    3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0
+                                    3450.0 3450.0 ] // values
+        MAKEGTS 'Vestas' RENAME 'Vestas' STORE
+        [ $Vestas bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
+      %>
+	  <% $TurbineId 'curve' STORE %>	  
+	  3 SWITCH //'curve' STORE
+
+       //calculate expected power with theoretical curve between selected dates
+        [] 'values' STORE
+        $wind SIZE 1 - 'len' STORE
+        0 $len <% 'i' STORE
+        $curve $wind VALUES $i GET ATTICK 0 GET -1 GET 'value' STORE //change to theoretical if you like
+        <% $value NULL == %> <% 0 'value' STORE %> 
+        <% $value 'value' STORE %> 1 SWITCH
+        $values [ $value ] APPEND 'values' STORE
+        %> FOR
+
+        $wind TICKLIST
+        [] [] []
+        $values
+        MAKEGTS $TurbineId2 RENAME 'data' STORE // this is the timeseries of simulated active power 
+
+      [ $data bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 6 / TOLONG 'simpow' STORE
+	  
+	
+	  { 'data' [ $data ] 'params' [ ] 
+        'events' [ { 'tags' [ 'simpow' ] 'type' 'variable' 'value' { 'sim' $simpow } }
+        // { 'type' 'variable' 'tags' [ 'chart' ] 'value' { 'data' $data2 WRAP } }
+        { 'tags' [ 'chart1' ] 'type' 'zoom'  } // send zoom event on channel "chart1"
+        { 'tags' [ 'chart1' ] 'type' 'focus' } // send focus event on channel "chart1"
+        
+      ]
+      
+      
+      }
+      %>
+    }
+    
+			
+					{
+    'title' 'Power Curve Comparison'
+    'options' { 
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|TurbineId2|startDate|endDate)' //TurbineId,plant,startDate,endDate,VariableId
+                'showLegend' true
+
+				}
+    'x' 0 'y' 6 'w' 6 'h' 4
+    'type' 'scatter' 
+    'macro' <%
+
+    
+[ $myreadtoken '~ACTIVE_POWER.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH 'pow' STORE
+
+	   
+     [ $myreadtoken '~WIND_SPEED.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+	 $endDate TOSTRING
+      ] FETCH 'wind' STORE
+		
+		$wind <% 100 * %> FOREACH 'wind' STORE
+		$plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
+
+         //align timeseries
+      $endDate "lastBucket" STORE
+      $startDate 'start' STORE
+      10 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $pow bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'pow' STORE
+      [ $wind bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'wind' STORE
+    
+
+		$wind VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$pow VALUES FLATTEN // values
+		MAKEGTS
+		$turbine_name1 RENAME 'data_merge' STORE
+		[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
+
+       <% $TurbineId2 'GW165-6MW' == %> <% 
+        [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+            1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 ]  // ticks
+            [] [] []             // latitudes longitudes and elevations
+        [  0.0 71.93 176.19 309.28 467.23 654.11 878.35 1142.83
+                           1458.27 1821.29 2235.62 2693.52 3204.79 3744.81 4281.41 4766.49 
+                           5175.59 5513.27 5767.25 5913.71 5973.0 5992.50 5995.0 
+                           6000.0 6000.0 6000.0 6000.0 6000.0 6000.0 6000.0 6000.0
+                           5993.88 5991.75 5936.25 5802.50 5503.0 5091.0
+                           4624.25 4109.25 3553.25 3073.50 2575.25 2187.75 1848.61
+                           ] // values
+        MAKEGTS 'Goldwind' RENAME 'Goldwind' STORE
+        [ $Goldwind bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
+       %>
+	  <% $TurbineId2 'SN1500' == %> <% 
+       [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+               [] [] []             // latitudes longitudes and elevations
+               [ 0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410
+                           458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 
+                           1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0  1500.0
+                            1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0
+                            1500.0 1500.0 ] // values
+              MAKEGTS 'Sinovel' RENAME 'Sinovel' STORE
+        [ $Sinovel bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
+       %>
+	  <% $TurbineId2 'V112' == %> <% 
+        [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+        1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+        [] [] []             // latitudes longitudes and elevations
+        [  0.0 7.0 53.0 123.0 208.0 309.0 427.0 567.0
+                                732.0 927.0 1149.0 1401.0 1688.0 2006.0 2348.0 2693.0 
+                                3011.0 3252.0 3388.0 3436.0 3448.0 3450.0 3450.0 
+                                3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 
+                                3450.0 3450.0 3450.0 3450.0 3450.0 3450.0  3450.0
+                                    3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0
+                                    3450.0 3450.0 ] // values
+        MAKEGTS 'Vestas' RENAME 'Vestas' STORE
+        [ $Vestas bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
+      %>
+	  <% $TurbineId 'TurbineId' STORE %>	  
+	  3 SWITCH //'curve' STORE
+	   
+ 
+        $TurbineId2 TOSTRING 'turbine_name2' STORE
+		$wind <% 100 * %> FOREACH 'wind' STORE
+		
+
+	 
+	 { 'data' [ $mean_spline $curve ] 'params' [ { 'type' 'spline' }  { 'type' 'spline' } ]  'globalParams' {  'timeMode' 'timestamp' } } 
+	
+      %>
+	  
+	  
+    }
+    // All variables comparison table (mean, tbd)
+
+    {
+      'type' 'tabular' 'x' 6 'y' 6 'w' 6 'h' 4
+      'title' 'Real vs Simulated'
+      'options' { 'eventHandler' 'type=variable,tag=(TurbineId|TurbineId2|plant|realpow|simpow)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+        
+     $plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
+     $TurbineId2 TOSTRING  'turbine_name2' STORE
+     $sim TOSTRING 'simpow2' STORE
+     $real TOSTRING 'realpow2' STORE
+
+        {
+          'columns' [ 'Variable' $turbine_name1 $turbine_name2 ]
+          'rows' [ [ 'Power Production(kWh)' $realpow2 $simpow2 ] ]        
+                  } 
+        'values' STORE
+    
+        { 'data' $values 
+          'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+    
+	
+  ]
+
+
+}
+

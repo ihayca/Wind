@@ -5,7 +5,8 @@
  
   'cellHeight' 100   
   'options' { 
-    'showErrors' true  
+    'showErrors' true
+      'showLoader' true  
 
       'scheme' 'CHARTANA'
        'timeZone' 'Europe/Istanbul'       
@@ -45,8 +46,9 @@
         'title' 'Turbine'                
         'x' 1 'y' 0 'w' 1 'h' 1              
         'type' 'input:list'                
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)' }            
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                       
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
