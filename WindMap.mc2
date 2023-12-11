@@ -6,7 +6,7 @@
   'options' { 
       'scheme' 'WARP10'
       'timeZone' 'Europe/Istanbul'
-      'autoRefresh' 600
+      //'autoRefresh' 600
       'showLoader' true     
          }
 
@@ -111,26 +111,36 @@
     'type' 'bar-polar' 'macro' <%
 
       <% $plant 'Usak' == %> <%
-        [ $myreadtoken '~(GW_AVERAGE_WIND_SPEED|GW_AVERAGE_WIND_DIRECTION).*' { 'plant' $plant } 
+     [ $myreadtoken '~(GW_AVERAGE_WIND_SPEED|GW_AVERAGE_WIND_DIRECTION).*' { 'plant' $plant } 
          $startDate TOSTRING 
 	       $endDate TOSTRING
          //NOW 1 d
-        ] FETCH 'data' STORE
+      ] FETCH 'data' STORE
+	      $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE
+      [ $data 0 GET bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'degrees' STORE  //align times
+     [ $data 1 GET bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'speed' STORE   // align times
        %>
 	    <% $plant 'Yalova' == %> <% 
-        [ $myreadtoken '~(AverageWindSpeed|AverageWindDirection).*' { 'plant' $plant } 
+       [ $myreadtoken '~(AverageWindSpeed).*' { 'plant' $plant } 
          $startDate TOSTRING 
 	       $endDate TOSTRING
          //NOW 1 d
-        ] FETCH 'data' STORE
+      ] FETCH 'speed' STORE
+
+      [ $myreadtoken '~WIND_DIRECTION.*' { 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'degrees' STORE
+     [ $degrees bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'degrees' STORE  //align times
+     [ $speed bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'speed' STORE   // align times
+
+
       %>
       <% $plant 'Soke' == %> <% 
 
       %> <% %> 3 SWITCH
  	
-	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE
-     [ $data 0 GET bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'degrees' STORE  //align times
-     [ $data 1 GET bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'speed' STORE   // align times
+
 
     $degrees SIZE 1 - 'len' STORE  //total number of data
     //define variables

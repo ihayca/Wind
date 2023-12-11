@@ -91,6 +91,7 @@
       'title' 'Time Difference Table'
       'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|TurbineId2|plant|plant2)'
                   // suscribe to events
+                  'showLoader' true
         'tabular' { 'fixedWidth' true }
       }
       'macro' <%
@@ -99,12 +100,10 @@
          $endDate TOSTRING
       ] FETCH 'data' STORE
 	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
-      $data FIRSTTICK 'firsttick' STORE
-      $data LASTTICK 'lasttick' STORE
-      $data $firsttick 1 TIMECLIP 'first_values' STORE
-      $data $lasttick 1 TIMECLIP 'last_values' STORE
-
-      $first_values SIZE 1 - 'length_of_variables' STORE
+     //bucketize so all signals are aligned
+     [ $data bucketizer.last 0 0 1 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'lastbucket' STORE
+     [ $data bucketizer.first 0 0 1 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'firstbucket' STORE
+       $firstbucket SIZE 1 - 'length_of_variables' STORE
 
              {
           'columns' [ 'Variable' 'First Value' 'Last Value' 'Difference' ]
@@ -112,9 +111,9 @@
  0 $length_of_variables
 <%
   'i' STORE
-  $last_values $i GET NAME 'variableName' STORE
-  $first_values $i GET VALUES 0 GET 'firstvalue' STORE
-  $last_values $i GET VALUES 0 GET 'lastvalue' STORE
+  $lastbucket $i GET NAME 'variableName' STORE
+  $firstbucket $i GET VALUES 0 GET 'firstvalue' STORE
+  $lastbucket $i GET VALUES 0 GET 'lastvalue' STORE
   $lastvalue $firstvalue - 'diff' STORE
   [ $variableName $firstvalue $lastvalue $diff ]
 %> FOR         

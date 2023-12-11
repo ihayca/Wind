@@ -1,0 +1,775 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+  //'type' 'flex'
+  'cellHeight' 80   
+  'options' { 
+      'scheme' 'BELIZE'
+      'timeZone' 'Europe/Istanbul'   
+      'showErrors' true
+      'showLoader' true
+      'eventHandler' 'type=popup,tag=popup'
+       
+            }
+		 
+  'vars' {
+          'plant' 'Yalova'
+	  'TurbineId' '1'
+	  'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
+          'endDate' NOW //1658913094000000 //604800000000
+          'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+          'status' 'No Data'
+          }
+  'tiles' [
+    {                
+        'title' 'Plant'                
+        'x' 0 'y' 0 'w' 1 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' 'Turbine'                
+        'x' 1 'y' 0 'w' 1 'h' 1              
+        'type' 'input:list' 
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)' }               
+        'macro' <%     
+                         
+            [ $myreadtoken '~.*' { 'plant' $plant  } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                    
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'Start Date'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                       
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                     
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    } 
+    
+	{  
+    'title' 'Active Power'   
+    'options' { 'autoRefresh' 60
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
+		'maxValue' 100
+		'unit' ' kW'
+				}
+    'x' 6 'y' 0 'w' 1 'h' 1 
+    'type' 'display' 	
+    'macro' <%    
+     [ $myreadtoken '~ACTIVE_POWER' { 'plant'  $plant 'type' 'Wind' 'TurbineId' $TurbineId } 
+        NOW 1 d //$startDate TOSTRING 
+        //$endDate TOSTRING
+      ] FETCH 'data' STORE
+     <% $data [] != %> <%  
+     [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'turbine_power' STORE
+     <% $turbine_power 0 == %> <% 0.001 'turbine_power' STORE %>
+     <% $turbine_power 'turbine_power' STORE %>
+     1 SWITCH
+     %> <% 0.001 'turbine_power' STORE %> IFTE
+    
+      <' 
+      %.2f
+    '> 
+    [ $turbine_power TODOUBLE ] STRINGFORMAT 'turbine_power' STORE
+
+
+     { 
+       'data' $turbine_power 
+        'params' [ 
+                ]
+      'globalParams' { 'gauge' { 'horizontal' true } }
+     }  
+  
+    %>
+    }
+
+    	{  
+    'title' 'Wind Speed'   
+    'options' { 'autoRefresh' 60
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
+		'maxValue' 100
+		'unit' ' m/s'
+				}
+    'x' 7 'y' 0 'w' 1 'h' 1 
+    'type' 'display' 	
+    'macro' <%    
+     [ $myreadtoken '~WIND_SPEED' { 'plant'  $plant 'type' 'Wind' 'TurbineId' $TurbineId } 
+        NOW 1 d //$startDate TOSTRING 
+        //$endDate TOSTRING
+      ] FETCH 'data' STORE
+     
+     [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'turbine_wind' STORE
+     <% $turbine_wind 0 == %> <% 0.001 'turbine_wind' STORE %>
+     <% $turbine_wind 'turbine_wind' STORE %>
+     1 SWITCH
+    
+      <' 
+      %.2f
+    '> 
+    [ $turbine_wind TODOUBLE ] STRINGFORMAT 'turbine_wind' STORE
+
+
+     { 
+       'data' $turbine_wind
+        'params' [ 
+                ]
+      'globalParams' { 'gauge' { 'horizontal' true } }
+     }  
+  
+    %>
+    }
+
+	{  
+    'title' 'Day / Total Generation'   
+    'options' { 'autoRefresh' 60
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
+		'unit' 'MWh'
+				}
+    'x' 8 'y' 0 'w' 2 'h' 1 
+    'type' 'display' 	
+    'macro' <% 
+      [ $myreadtoken '~TOTAL_MWh' { 'TurbineId' $TurbineId 'plant' $plant } 
+         NOW 2 d //$startDate TOSTRING 
+	 //$endDate TOSTRING
+      ] FETCH 'total_data' STORE
+      $total_data 0 GET LABELS 'manufacturer' GET 'manu' STORE
+
+      <% $manu 'Goldwind' == %> <%
+        NOW ->TSELEMENTS 'now_stamp' STORE
+        $now_stamp 0 GET 'year' STORE // year now
+        $now_stamp 1 GET 'month' STORE // value of this month
+        $now_stamp 2 GET 'day' STORE //day of today
+
+        [ $year $month $day ]  TSELEMENTS-> ISO8601 'start' STORE
+        $total_data NOW $start TIMECLIP 0 GET VALUES 'values' STORE 
+        <% $values [] == %> <% 0.0 'day_data' STORE %> <% $values -1 GET $values 0 GET - TODOUBLE 1000 / 'day_data' STORE %> IFTE // if no generation until midnight
+        [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 1000 / 'total_data' STORE
+
+      %> 
+      <%   
+     [ $myreadtoken '~DAY_MWh' { 'TurbineId' $TurbineId 'plant' $plant } 
+         NOW 1 d //$startDate TOSTRING 
+	 //$endDate TOSTRING
+      ] FETCH 'day_data' STORE
+        <% $day_data [] != %> <%  
+ 
+    [ $day_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'day_data' STORE
+    [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'total_data' STORE
+     %> 
+     <% 0.0001 'day_data' STORE
+      [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'total_data' STORE
+       %> IFTE
+      %> 1 SWITCH
+     
+
+    
+
+    <' 
+      %.2f
+    '> 
+    [ $day_data ] STRINGFORMAT 'day_data' STORE
+        <' 
+      %.2f
+    '> 
+    [ $total_data ] STRINGFORMAT 'total_data' STORE
+
+    $day_data TOSTRING ' / ' + $total_data TOSTRING + 'data' STORE
+    $data
+    %>
+    }
+	
+				{  
+    'title' 'Status'   
+    'options' { 'autoRefresh' 60
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
+		'maxValue' 100
+		'gauge.horizontal' false
+				}
+    'x' 10 'y' 0 'w' 1 'h' 1 
+    'type' 'display' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~PLC_STATUS' { 'TurbineId' $TurbineId 'plant' $plant } 
+         NOW 7 d //$startDate TOSTRING 
+	       //$endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE 
+
+  [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'status' STORE
+    $data 0 GET LABELS 'manufacturer' GET 'manu' STORE
+
+    <% $manu 'Goldwind' == %> <% 
+   <% $status 1 == %> <% 'Inıtialization' 'status' STORE %>
+   <% $status 2 == %> <% 'Stop' 'status' STORE %>
+   <% $status 3 == %> <% 'Standstill' 'status' STORE %>
+   <% $status 4 == %> <% 'Starting' 'status' STORE %>
+   <% $status 5 == %> <% 'Run Up' 'status' STORE %>
+   <% $status 6 == %> <% 'Power Production' 'status' STORE %>
+   <% $status 7 == %> <% 'Service' 'status' STORE %>
+   <% 'offline' 'status' STORE %> 7 SWITCH
+    %>
+       <%
+   <% $status 0 == %> <% 'Start' 'status' STORE %>
+   <% $status 1 == %> <% 'Standby' 'status' STORE %>
+   <% $status 2 == %> <% 'Production' 'status' STORE %>
+   <% $status 3 == %> <% 'Error' 'status' STORE %>
+   <% $status 4 == %> <% 'Service' 'status' STORE %>
+   <% $status 5 == %> <% 'Low Temp.' 'status' STORE %>
+   <% $status 6 == %> <% 'High wind' 'status' STORE %>
+   <% 'offline' 'status' STORE %> 7 SWITCH
+       %> 1 SWITCH
+   { 
+     'data' $status
+     }
+	 
+    %>
+    }
+			{  
+    'title' 'Temperature'   
+    'options' { 'autoRefresh' 60
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
+		'maxValue' 100
+		'unit' '°C'
+		'gauge.horizontal' false
+				}
+    'x' 11 'y' 0 'w' 1 'h' 1 
+    'type' 'display' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~EnvTem' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		 $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE 
+
+	 [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'temp' STORE
+
+    <' 
+      %.2f
+    '> 
+    [ $temp ] STRINGFORMAT 'temp' STORE
+
+    $temp
+
+    %>
+    }
+
+			{  
+    'title' 'Rotor - Generator Speed'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 0 'y' 1 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(RotorSpeed|GeneratorSpeed)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+  'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+	
+	
+		{  
+    'title' 'Nacelle Position'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+				}
+    'x' 3 'y' 1 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(NacellePosition)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+    	{  
+    'title' 'Nacelle Temperature'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+				}
+    'x' 6 'y' 1 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(NacTem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+    {  
+    'title' 'Cabinet Temperatures'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 9 'y' 1 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(Cab320Tem|Cab300Tem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+    {  
+    'title' 'Generator Bearing Temperatures'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 0 'y' 3 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(GenBeaNonTem|GenBeaDriTem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+	
+      {  
+    'title' 'Generator Coil Temperatures'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 3 'y' 3 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(GenCoilTem3|GenCoilTem2|GenCoilTem1)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+     {  
+    'title' 'Gearbox Temperatures'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 6 'y' 3 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(GeaOilTem|GeaBeaTem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+    {  
+    'title' 'Vibrations'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 9 'y' 3 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(XvibNon|XvibDri)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+       {  
+    'title' 'Hub Positions'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 0 'y' 5 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(HubPos003|HubPos002|HubPos001)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+     {  
+    'title' 'Hub Torques'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 3 'y' 5 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(HubTor003|HubTor002|HubTor001)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+    {  
+    'title' 'Hub Motor Temperatures'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 6 'y' 5 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(HubMotTem003|HubMotTem002|HubMotTem001)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+  {  
+    'title' 'Fil Pla Temperature'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 9 'y' 5 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(FilPlaTem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+{  
+    'title' 'ConLsclgb - ConGsclgb Temperatures'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 0 'y' 7 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(ConLsclgbTem|ConGsclgbTem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+    {  
+    'title' 'ChoLin - ChoGen Temperatures'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 3 'y' 7 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(ChoLinTem|ChoGenTem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+
+     {  
+    'title' 'UPS Voltage - Temperature'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+        //'showControls' true
+        'input' { 'showButton' true } 
+				}
+    'x' 6 'y' 7 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(UpsBatVol|UpsBatTem)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
+    %>
+    }
+			
+          {  
+    'title' 'FaiCur - DriTraSwi'   
+    'options' { 'autoRefresh' 60
+                  'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|startDate|endDate|ZOOM|FOCUS)'
+				'showRangeSelector' true
+        'showLegend' true
+				}
+    'x' 9 'y' 7 'w' 3 'h' 2 
+    'type' 'line' 	
+    'macro' <%    
+   //fetch the most recent point of every GTS this token can access
+    [ $myreadtoken '~(FaiCur|DriTraSwi)' { 'TurbineId' $TurbineId 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'TurbineId' '' } RELABEL 'data' STORE 
+
+	 //[ $data bucketizer.last 0 0 1 ] BUCKETIZE 0 GET 'data' STORE
+
+   {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+         ]
+   }
+    %>
+    }
+
+  ]
+
+
+}
+

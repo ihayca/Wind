@@ -6,13 +6,13 @@
   'options' { 
       'scheme' 'BELIZE'
       'timeZone' 'Europe/Istanbul'   
-      'showErrors' true
+      //'showErrors' true
       'showLoader' true
        
             }
 		 
   'vars' {
-          'plant' 'Usak'
+          'plant' 'Yalova'
 	  'TurbineId' '1'
 	  'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
           'endDate' NOW //1658913094000000 //604800000000
@@ -152,6 +152,17 @@
         [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 1000 / 'total_data' STORE
 
       %> 
+      <% $manu 'Vestas' == %> <%
+        NOW ->TSELEMENTS 'now_stamp' STORE
+        $now_stamp 0 GET 'year' STORE // year now
+        $now_stamp 1 GET 'month' STORE // value of this month
+        $now_stamp 2 GET 'day' STORE //day of today
+
+        [ $year $month $day ]  TSELEMENTS-> ISO8601 'start' STORE
+        $total_data NOW $start TIMECLIP 0 GET VALUES 'values' STORE 
+        <% $values [] == %> <% 0.0 'day_data' STORE %> <% $values -1 GET $values 0 GET - TODOUBLE 1000 / 'day_data' STORE %> IFTE // if no generation until midnight
+        [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 1000 / 'total_data' STORE
+      %> 
       <%   
      [ $myreadtoken '~DAY_MWh.*' { 'TurbineId' $TurbineId 'plant' $plant } 
          NOW 1 d //$startDate TOSTRING 
@@ -160,7 +171,7 @@
  
     [ $day_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'day_data' STORE
     [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'total_data' STORE
-      %> 1 SWITCH
+      %> 2 SWITCH
 
     
 
@@ -185,7 +196,7 @@
 		'maxValue' 100
 		'gauge.horizontal' false
 				}
-    'x' 10 'y' 0 'w' 1 'h' 1 
+    'x' 11 'y' 0 'w' 1 'h' 1 
     'type' 'display' 	
     'macro' <%    
    //fetch the most recent point of every GTS this token can access
@@ -225,31 +236,63 @@
     %>
     }
 			{  
-    'title' 'Temperature'   
+    'title' 'Temperature' 
+    'type' 'linear-gauge' 	  
     'options' { 'autoRefresh' 10
                 'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
 		'maxValue' 100
 		'unit' '°C'
-		'gauge.horizontal' false
+		'gauge' { 'horizontal' true }
 				}
-    'x' 11 'y' 0 'w' 1 'h' 1 
-    'type' 'display' 	
+    'x' 10 'y' 0 'w' 1 'h' 1 
+    
     'macro' <%    
    //fetch the most recent point of every GTS this token can access
-    [ $myreadtoken '~EnvTem.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+    [ $myreadtoken '~EnvTem' { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 		 $endDate TOSTRING
       ] FETCH 'data' STORE
-	  	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE 
-
+	  	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE
+     $data 0 GET MAX 'max_temp' STORE
+      $data 0 GET MIN 'min_temp' STORE
 	 [ $data bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'temp' STORE
+   [ $data bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET TODOUBLE 'mean_temp' STORE
+	$temp 'tostring' STORE
+    <' 
+      %.1f
+    '> 
+    [ $tostring ] STRINGFORMAT 'temp' STORE
 
     <' 
-      %.2f
+      %.1f
     '> 
-    [ $temp ] STRINGFORMAT 'temp' STORE
+    [ $min_temp TODOUBLE ] STRINGFORMAT 'min_temp' STORE
 
-    $temp
+    <' 
+      %.1f
+    '> 
+    [ $max_temp TODOUBLE ] STRINGFORMAT 'max_temp' STORE
+
+    <' 
+      %.1f
+    '> 
+    [ $mean_temp TODOUBLE ] STRINGFORMAT 'mean_temp' STORE
+
+     {
+    'key' 'Mean:' $mean_temp + '  Min:' + $min_temp + '  Max:' + $max_temp +
+    'value' $temp
+     }
+      'data' STORE
+
+     { 
+     'data' $data 
+      'params' [ { 'maxValue' 100 } ]
+  'globalParams' { 
+   'unit' '°C'
+   'gauge' { 'horizontal' true }
+  }
+
+    }
 
     %>
     }
@@ -452,109 +495,20 @@ $avail TODOUBLE $total TODOUBLE  / 100 * 'time_avail' STORE
 
 
 // calculate turbine perf according to vendor power curve
-<% $plant 'Soke' == %>
-<% 
 
-[ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
-1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
-[] [] []             // latitudes longitudes and elevations
-[  0.0 7.0 53.0 123.0 208.0 309.0 427.0 567.0
-                           732.0 927.0 1149.0 1401.0 1688.0 2006.0 2348.0 2693.0 
-                           3011.0 3252.0 3388.0 3436.0 3448.0 3450.0 3450.0 
-                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 
-                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0  3450.0
-                            3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0
-                            3450.0 3450.0 ] // values
-MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
-  
-[ $theoretical bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'theoretical' STORE 
-
-    // get best curve of the selected turbine
-
-   [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'plant' $plant 'TurbineId' $TurbineId } 
-   //$startDate TOSTRING 
-	 //$endDate TOSTRING
-     NOW MAXLONG ] FETCH 'x' STORE
-      
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE  NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
-
-    $chunk 0 GET 'windlist' STORE
-    $chunk 1 GET 'powerlist' STORE
-    [] 'energy' STORE
-    [] 'curves' STORE
-   0 $windlist SIZE 1 - <% 'i' STORE
-         //create curve of the turbine
-  $windlist $i GET 100 * 'bestwind' STORE
-  $windlist $i GET LABELS '.chunkid' GET 'name' STORE 
-  $powerlist $i GET 'bestpow' STORE
-
-   $bestwind VALUES FLATTEN  // ticks
-   [] [] []             // latitudes, longitudes and elevations
-   $bestpow VALUES FLATTEN // values
-   MAKEGTS
-  $name RENAME 3000 2850 TIMECLIP 'bestdata' STORE
-  // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1850 TIMECLIP 'curve' STORE 
-  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 3000 2850 TIMECLIP 'curve' STORE // rlowess curve 
-  $curves $curve APPEND 'curves' STORE
-  $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
-   %> FOR
-
-   $energy VALUES FLATTEN LSORT -1 GET 'big' STORE
-  [ $energy $big mapper.eq 0 0 0 ] MAP NONEMPTY 0 GET NAME 'class' STORE
-  [ $curves [] $class filter.byclass ] FILTER 0 GET 'bestcurve' STORE 
-   $bestcurve NAME TOLONG ISO8601 'T' SPLIT 0 GET 'time' STORE
-   $bestcurve $time RENAME 'bestcurve' STORE
-      [ $bestcurve bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'bestcurve' STORE
-      //create curve of the turbine
-  $wind 100 * 'wind' STORE 
-
-   $wind VALUES FLATTEN  // ticks
-   [] [] []             // latitudes, longitudes and elevations
-   $pow VALUES FLATTEN // values
-   MAKEGTS
-  'data' RENAME 'data' STORE
-
-   [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
-   
-  //calculate expected power with theoretical curve 
-  [] 'values' STORE
-  $wind SIZE 1 - 'len' STORE
-  0 $len <% 'i' STORE
-   $bestcurve $wind VALUES $i GET ATTICK 0 GET -1 GET 'value' STORE  //for theoretical put instead bestcurve
-   <% $value NULL == %> <% 0 'value' STORE %> 
-   <% $value 'value' STORE %> 1 SWITCH
-   $values [ $value ] APPEND 'values' STORE
-   %> FOR
-
-  $wind TICKLIST
-  [] [] []
-  $values
-  MAKEGTS 'Expected' RENAME 'expected' STORE 
-
-%>
-<%
-      
-     // create theoretical power VALUES
-     [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
-               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
-               [] [] []             // latitudes longitudes and elevations
-               [ 0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410
-                           458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 
-                           1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 
-                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 
-                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0  1500.0
-                            1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0
-                            1500.0 1500.0 ] // values
-              MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
-
-  [ $theoretical bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'theoretical' STORE 
-      
      // get best curve of the selected turbine
 
    [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'plant' $plant 'TurbineId' $TurbineId } 
    //$startDate TOSTRING 
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
+
+       // find both zeros
+     [ $x 0.0 mapper.eq 0 0 0 ] MAP 'zeros' STORE
+     $zeros 0 GET $zeros 1 GET + TICKLIST 'serviceticks' STORE
+     $x 0 GET $serviceticks REMOVETICK 'xpower' STORE 
+     $x 1 GET $serviceticks REMOVETICK 'xwind' STORE 
+     [ $xpower $xwind ] 'x' STORE
       
      $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
@@ -612,7 +566,6 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
   $values
   MAKEGTS 'Expected' RENAME 'expected' STORE 
 
-%> 1 SWITCH
 
 [ $pow bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'generated' STORE
 [ $expected bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'expected' STORE
@@ -1223,6 +1176,7 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
     'options' { 'autoRefresh' 600
                 'eventHandler' 'type=(bounds|zoom|focus|margin|variable),tag=(TurbineId|plant|startDate|endDate)'
 				'showRangeSelector' true
+        'showLegend' true
 
 				}
     'x' 8 'y' 1 'w' 4 'h' 2
@@ -1231,13 +1185,20 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
                'macro' <%
 	
 	
-     [ $myreadtoken '~ACTIVE_POWER.*' { 'TurbineId' $TurbineId 'plant' $plant } 
+     [ $myreadtoken '~(ACTIVE_POWER|ReaPower)' { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 	$endDate TOSTRING
       ] FETCH { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data' STORE
 	  $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes
 	  [ $data bucketizer.mean 0 10 m 0 ] BUCKETIZE 'data' STORE
-        $data
+        {
+  'data' $data 
+    'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ] 
+  'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+   }
       %>
 
     }
@@ -1270,104 +1231,6 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
 
 
 // calculate turbine perf according to vendor power curve
-<% $plant 'Soke' == %>
-<% 
-
-[ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
-1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
-[] [] []             // latitudes longitudes and elevations
-[  0.0 7.0 53.0 123.0 208.0 309.0 427.0 567.0
-                           732.0 927.0 1149.0 1401.0 1688.0 2006.0 2348.0 2693.0 
-                           3011.0 3252.0 3388.0 3436.0 3448.0 3450.0 3450.0 
-                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 
-                           3450.0 3450.0 3450.0 3450.0 3450.0 3450.0  3450.0
-                            3450.0 3450.0 3450.0 3450.0 3450.0 3450.0 3450.0
-                            3450.0 3450.0 ] // values
-MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
-  
-[ $theoretical bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'theoretical' STORE 
-      
-      //create curve of the turbine
-  $wind 100 * 'wind' STORE 
-
-   $wind VALUES FLATTEN  // ticks
-   [] [] []             // latitudes, longitudes and elevations
-   $pow VALUES FLATTEN // values
-   MAKEGTS
-  'data' RENAME 'data' STORE
-
-   [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE
-
-   // find best curve of the turbine 
-   
- [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'plant' $plant 'TurbineId' $TurbineId } 
-   //$startDate TOSTRING 
-	 //$endDate TOSTRING
-     NOW MAXLONG ] FETCH 'x' STORE
-      
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE FILLNEXT FILLPREVIOUS NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
-
-    $chunk 0 GET 'windlist' STORE
-    $chunk 1 GET 'powerlist' STORE
-    [] 'energy' STORE
-    [] 'curves' STORE
-   0 $windlist SIZE 1 - <% 'i' STORE
-         //create curve of the turbine
-  $windlist $i GET 100 * 'bestwind' STORE
-  $windlist $i GET LABELS '.chunkid' GET 'name' STORE 
-  $powerlist $i GET 'bestpow' STORE
-
-   $bestwind VALUES FLATTEN  // ticks
-   [] [] []             // latitudes, longitudes and elevations
-   $bestpow VALUES FLATTEN // values
-   MAKEGTS
-  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
-  // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
-  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
-  $curves $curve APPEND 'curves' STORE
-  $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
-   %> FOR
-
-   $energy VALUES FLATTEN LSORT -1 GET 'big' STORE
-  [ $energy $big mapper.eq 0 0 0 ] MAP NONEMPTY 0 GET NAME 'class' STORE
-  [ $curves [] $class filter.byclass ] FILTER 0 GET 'bestcurve' STORE 
-   $bestcurve NAME TOLONG ISO8601 'T' SPLIT 0 GET 'time' STORE
-   $bestcurve $time RENAME 'bestcurve' STORE
-   [ $bestcurve bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'bestcurve' STORE
-
-  //calculate expected power with theoretical curve 
-  [] 'values' STORE
-  $wind SIZE 1 - 'len' STORE
-  0 $len <% 'i' STORE
-   $bestcurve $wind VALUES $i GET ATTICK 0 GET -1 GET 'value' STORE //change to theoretical if you like
-   <% $value NULL == %> <% 0 'value' STORE %> 
-   <% $value 'value' STORE %> 1 SWITCH
-   $values [ $value ] APPEND 'values' STORE
-   %> FOR
-
-  $wind TICKLIST
-  [] [] []
-  $values
-  MAKEGTS 'Expected' RENAME 'expected' STORE 
-
-%>
-<%
-      
-     // create theoretical power VALUES
-     [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
-               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
-               [] [] []             // latitudes longitudes and elevations
-               [ 0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410
-                           458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 
-                           1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 
-                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 
-                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0  1500.0
-                            1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0
-                            1500.0 1500.0 ] // values
-              MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
-
-  [ $theoretical bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'theoretical' STORE 
-      
       //create curve of the turbine
   $wind 100 * 'wind' STORE 
 
@@ -1383,6 +1246,13 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
    //$startDate TOSTRING 
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
+
+           // find both zeros
+     [ $x 0.0 mapper.eq 0 0 0 ] MAP 'zeros' STORE
+     $zeros 0 GET $zeros 1 GET + TICKLIST 'serviceticks' STORE
+     $x 0 GET $serviceticks REMOVETICK 'xpower' STORE 
+     $x 1 GET $serviceticks REMOVETICK 'xwind' STORE 
+     [ $xpower $xwind ] 'x' STORE
       
      $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
@@ -1428,8 +1298,6 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
   [] [] []
   $values
   MAKEGTS 'Expected' RENAME 'expected' STORE 
-
-%> 1 SWITCH
     
       $expected
       $pow
@@ -1448,7 +1316,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
     'x' 8 'y' 3 'w' 4 'h' 2
     'type' 'line' 'macro' <%
 
-     [ $myreadtoken '~(WIND_DIRECTION|WIND_SPEED).*' { 'TurbineId' $TurbineId 'plant' $plant } 
+     [ $myreadtoken '~(WIND_DIRECTION|WIND_SPEED|HubTor001).*' { 'TurbineId' $TurbineId 'plant' $plant } 
          $startDate TOSTRING 
 	$endDate TOSTRING
       ] FETCH 'data' STORE
@@ -1456,7 +1324,7 @@ MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
 	  [ $nacelle_data bucketizer.mean 0 10 m 0 ] BUCKETIZE 'nacelle_data' STORE 
 	  	  
 	  {
-	  'data' $nacelle_data 'params' [ { 'yAxis' 0 } { 'yAxis' 1 } ]
+	  'data' $nacelle_data 'params' [ { 'yAxis' 0 } { 'yAxis' 1 } { 'yAxis' 2 }  ]
 
 	  }
 	
@@ -1643,6 +1511,13 @@ MAKEGTS %>
    //$startDate TOSTRING 
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
+
+        // find both zeros
+     [ $x 0.0 mapper.eq 0 0 0 ] MAP 'zeros' STORE
+     $zeros 0 GET $zeros 1 GET + TICKLIST 'serviceticks' STORE
+     $x 0 GET $serviceticks REMOVETICK 'power' STORE 
+     $x 1 GET $serviceticks REMOVETICK 'wind' STORE 
+     [ $power $wind ] 'x' STORE
       
      $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE  NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
