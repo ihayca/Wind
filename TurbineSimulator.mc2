@@ -7,15 +7,17 @@
   'options' { 
       'scheme' 'CHARTANA'
             'timeZone' 'AUTO' 
-    'showLoader' true     
+    'showLoader' true  
+          'eventHandler' 'type=popup,tag=popup'
+   
          }
 		 
   'vars' {
-      'plant' 'Usak'
-      'SimManufacturer' 'Select'
+      'plant' 'Yalova'
+      'SimManufacturer' 'Sinovel'
       
       'TurbineId' '1'
-      'TurbineId2' 'Select'
+      'SimModel' 'SN1500'
       'real' 0
       'sim' 0
       'curve' '0'
@@ -33,7 +35,7 @@
 
 {                
         'title' 'Plant'                
-        'x' 0 'y' 0 'w' 2 'h' 1                
+        'x' 0 'y' 0 'w' 1 'h' 1                
         'type' 'input:list'                
         'macro' <%                     
             [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
@@ -47,10 +49,12 @@
     }  
 	{                
         'title' 'Turbine'                
-        'x' 2 'y' 0 'w' 2 'h' 1              
-        'type' 'input:list'                
+        'x' 1 'y' 0 'w' 1 'h' 1              
+        'type' 'input:list'
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)' }               
+                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
@@ -63,7 +67,7 @@
 	
 	{                
         'title' 'Start Date'                
-        'x' 4 'y' 0 'w' 2 'h' 1              
+        'x' 2 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
                               
@@ -78,7 +82,7 @@
 	
 	{                
         'title' 'End  Date'                
-        'x' 6 'y' 0 'w' 2 'h' 1              
+        'x' 4 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
                               
@@ -93,11 +97,13 @@
     
     {                
         'title' 'Manufacturer'                
-        'x' 8 'y' 0 'w' 2 'h' 1                
+        'x' 6 'y' 0 'w' 2 'h' 1                
         'type' 'input:list'                
         'macro' <%                     
-          // [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE     
-          [ 'Select' 'Goldwind' 'Sinovel' 'Vestas' ] 'listOfMans' STORE                
+          // [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE 
+          [ $myreadtoken '~curve.*' {} ] FINDSETS STACKTOLIST 1 GET 'Manufacturer' GET LSORT 'listOfMans' STORE                    
+    
+          //[ 'Select' 'Goldwind' 'Sinovel' 'Vestas' ] 'listOfMans' STORE                
             {                        
                 'data' $listOfMans                        
                 'globalParams' { 'input' { 'value' $SimManufacturer } } // the initial selected value coming from global vars                        
@@ -110,22 +116,124 @@
         'title' 'Simulated Turbine' 
         'options' { 'eventHandler' 'type=(variable),tag=(SimManufacturer)'
                       } //subscribe to SimManufacturer event                 
-        'x' 10 'y' 0 'w' 2 'h' 1              
+        'x' 8 'y' 0 'w' 2 'h' 1              
         'type' 'input:list'                
         'macro' <% 
-            <% $SimManufacturer 'Goldwind' == %> <% [ 'Select' 'GW165-6MW' ] 'listOfTurbines' STORE %> 
+            /*  <% $SimManufacturer 'Goldwind' == %> <% [ 'Select' 'GW165-6MW' ] 'listOfTurbines' STORE %> 
             <% $SimManufacturer 'Sinovel' == %> <% [ 'Select'  'SN1500' ] 'listOfTurbines' STORE %> 
             <% $SimManufacturer 'Vestas' == %> <% [ 'Select' 'V112' ] 'listOfTurbines' STORE  %>
-            <% %> 3 SWITCH             
+            <% %> 3 SWITCH 
+           */
+            [ $myreadtoken '~curve.*' { 'Manufacturer' $SimManufacturer } ] FINDSETS STACKTOLIST 1 GET 'Model' GET LSORT 'listOfModels' STORE                    
+           
                                
             {                        
-                'data' $listOfTurbines                        
-                'globalParams' { 'input' { 'value' $TurbineId2 } } // the initial selected value coming from global vars                        
-                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId2' 'SimManufacturer' ] 'selector' 'TurbineId2' }  ] // Event definition                    
+                'data' $listOfModels                        
+                'globalParams' { 'input' { 'value' $SimModel 'showButton' true }  } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'SimModel' 'SimManufacturer' ] 'selector' 'SimModel' }  ] // Event definition                    
             }                
         %>            
     }  
+
+/// add new turbines to db
+{
+         'type' 'button'
+         'title' 'Add New Turbine'
+         'options' {
+          'button' { 'label' 'Add New' }
+         }
+         'w' 2 'h' 1 'x' 4 'y' 1
+         'macro' <% { 'data' <%
+            { 'data' ''
+             'events' [
+                { 'tags' [ 'popup' ] 'type' 'popup'
+                  'value'
+                  { 'title' 'Enter Turbine Data'
+                  'cellHeight' 80
+                  'vars' {
+                            'winds' '0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500'
+                            'powers' '0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410 458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0'
+                            'manufacturer' 'Manufacturer'
+                            'model' 'Model'
+                            'writetoken' 'VLMWo2sl_0j0ml.KHLpaa7lr14wLn_fAffcp.pGvv989p7MFOcyR9yF.nOrDqB2jgNR1iN93WCYav0lawYiRt0zuNWvDJhBeaVEzlGwVNBeIlRkhkv1OpUYymIiUZYMR' 
+
+  }
+                  
+                   'tiles' [   ///dashboard tile start
+                               {
+      'type' 'input:text'
+      'title' 'Manufacturer'
+      'w' 6 'h' 1 'x' 0 'y' 0
+      'macro' <% { 'data' $manufacturer 'events' [ { 'tags' [ 'manufacturer' ] 'type' 'variable' 'selector' 'manufacturer' } ] } %>
+    }
+                {
+      'type' 'input:text'
+      'title' 'Model'
+      'w' 6 'h' 1 'x' 6 'y' 0
+      'macro' <% { 'data' $model 'events' [ { 'tags' [ 'model' ] 'type' 'variable' 'selector' 'model' } ] } %>
+    }
+                   {
+      'type' 'input:text'
+      'title' 'Wind List'
+      'w' 12 'h' 1 'x' 0 'y' 1
+      'macro' <% { 'data' $winds 'events' [ { 'tags' [ 'winds' ] 'type' 'variable' 'selector' 'winds' } ] } %>
+    }
+    {
+      'type' 'input:text'
+      'title' 'Power List'
+      'w' 12 'h' 1 'x' 0 'y' 2
+      'macro' <% { 'data' $powers 'events' [ { 'tags' [ 'powers' ] 'type' 'variable' 'selector' 'powers' } ] } %>
+    }
+     
+    {
+      'type' 'scatter'
+      'title' 'Curve Check'
+      'w' 12 'h' 3 'x' 0 'y' 3
+      'macro' <% 
+        
+        [ $winds ' ' SPLIT <% TOLONG %> FOREACH ] //winds as ticklist
+        [] [] [] //empty latlongelev
+        [ $powers ' ' SPLIT <% TODOUBLE %> FOREACH ] //powers as curve
+        MAKEGTS 'curve' STORE
+            { 'data' [ $curve ] 'params' [ { 'type' 'scatter' }  ]  
+       'globalParams' {  'timeMode' 'timestamp' 'showControls' true } }
+          %>
+      'options' { 'eventHandler' 'type=(variable),tag=(curvevalues|winds|powers)' }
     
+    }
+       {
+      'type' 'button'
+      'title' 'Save'
+      'options' {
+        'button' { 'label' 'Save to DB' }
+        'eventHandler' 'type=variable,tag=(winds|powers|manufacturer|model)'
+      }
+      'w' 2 'h' 1 'x' 5 'y' 6
+      'macro' <% 
+        {            
+            'data' <%
+
+        [ $winds ' ' SPLIT <% TOLONG %> FOREACH ] //winds as ticklist
+        [] [] [] //empty latlongelev
+        [ $powers ' ' SPLIT <% TODOUBLE %> FOREACH ] //powers as curve
+        MAKEGTS { 'Manufacturer' $manufacturer 'Model' $model } RELABEL 'curve' RENAME 'curve' STORE
+        $curve $writetoken UPDATE
+        
+           { 'data' $curve 
+              'events' [ { 'type' 'variable' 'tags' [ 'model' ] 'value' $model }  ] 
+              }
+            %>
+
+        }
+      %>
+    }
+
+                ] } /// dashboard tile end
+                }
+               ]
+             }
+          %> } %>
+       }
 
     	{
     'title' 'Real Production' 
@@ -181,7 +289,7 @@
         'title' 'Simulated Production' 
 
     'options' { 
-                'eventHandler' 'type=(variable|zoom|focus),tag=(chart2|TurbineId|plant|TurbineId2|startDate|endDate)'
+                'eventHandler' 'type=(variable|zoom|focus),tag=(chart2|TurbineId|plant|SimManufacturer|SimModel|startDate|endDate)'
                 'showLegend' true
                 'showRangeSelector' true
 
@@ -205,7 +313,8 @@
       $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
       [ $data1 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 0 GET 'data1' STORE
       $data1 100 * 'wind' STORE
-
+     
+     /*
 
 	  <% $TurbineId2 'GW165-6MW' == %> <% 
         [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
@@ -250,7 +359,14 @@
         [ $Vestas bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
       %>
 	  <% $TurbineId 'curve' STORE %>	  
-	  3 SWITCH //'curve' STORE
+	  3 SWITCH 
+      */
+      
+      //'curve' STORE
+
+        [ $myreadtoken '~curve.*' { 'Manufacturer' $SimManufacturer 'Model' $SimModel } NOW MAXLONG ] FETCH 'simTurbine' STORE
+        [ $simTurbine bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
+
 
        //calculate expected power with theoretical curve between selected dates
         [] 'values' STORE
@@ -265,7 +381,7 @@
         $wind TICKLIST
         [] [] []
         $values
-        MAKEGTS $TurbineId2 RENAME 'data' STORE // this is the timeseries of simulated active power 
+        MAKEGTS $SimModel RENAME 'data' STORE // this is the timeseries of simulated active power 
 
       [ $data bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 6 / TOLONG 'simpow' STORE
 	  
@@ -287,7 +403,7 @@
 					{
     'title' 'Power Curve Comparison'
     'options' { 
-                'eventHandler' 'type=variable,tag=(TurbineId|plant|TurbineId2|startDate|endDate)' //TurbineId,plant,startDate,endDate,VariableId
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|SimManufacturer|SimModel|startDate|endDate)' //TurbineId,plant,startDate,endDate,VariableId
                 'showLegend' true
 
 				}
@@ -328,7 +444,7 @@
 		MAKEGTS
 		$turbine_name1 RENAME 'data_merge' STORE
 		[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
-
+  /*
        <% $TurbineId2 'GW165-6MW' == %> <% 
         [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
             1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 ]  // ticks
@@ -373,9 +489,12 @@
       %>
 	  <% $TurbineId 'TurbineId' STORE %>	  
 	  3 SWITCH //'curve' STORE
-	   
+	*/
+    
+        [ $myreadtoken '~curve.*' { 'Manufacturer' $SimManufacturer 'Model' $SimModel } NOW MAXLONG ] FETCH { '.app' '' } RELABEL 'simTurbine' STORE
+        [ $simTurbine bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'curve' STORE  // interpolate the empty points
  
-        $TurbineId2 TOSTRING 'turbine_name2' STORE
+        $SimModel TOSTRING 'turbine_name2' STORE
 		$wind <% 100 * %> FOREACH 'wind' STORE
 		
 
@@ -391,14 +510,14 @@
     {
       'type' 'tabular' 'x' 6 'y' 6 'w' 6 'h' 4
       'title' 'Real vs Simulated'
-      'options' { 'eventHandler' 'type=variable,tag=(TurbineId|TurbineId2|plant|realpow|simpow)'
+      'options' { 'eventHandler' 'type=variable,tag=(TurbineId|SimModel|plant|realpow|simpow)'
                   // suscribe to events
         'tabular' { 'fixedWidth' true }
       }
       'macro' <%
         
      $plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
-     $TurbineId2 TOSTRING  'turbine_name2' STORE
+     $SimModel TOSTRING  'turbine_name2' STORE
      $sim TOSTRING 'simpow2' STORE
      $real TOSTRING 'realpow2' STORE
 

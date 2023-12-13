@@ -1,0 +1,403 @@
+// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @theme light
+{
+
+  'type' 'flex'
+  'cellHeight' 80   
+  'options' { 
+      'scheme' 'CHARTANA'
+            'timeZone' 'AUTO' 
+    'showLoader' true  
+    'showErros' true   
+         }
+		 
+  'vars' {
+      'plant' 'Yalova'
+      'plant2' 'Yalova'
+      
+      'TurbineId' '1'
+      'TurbineId2' '1'
+      'realpow' 0
+      'simpow' 0
+      'realwind' 0
+      'simwind' 0
+      'curve' '0'
+      
+      'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
+          'endDate' NOW //1658913094000000 //604800000000
+       'startDate2' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
+          'endDate2' NOW //1658913094000000 //604800000000
+
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+}
+          
+          
+  'tiles' [
+    
+		
+
+{                
+        'title' '1st Plant'                
+        'x' 0 'y' 0 'w' 1 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' '1st Turbine'                
+        'x' 1 'y' 0 'w' 1 'h' 1              
+        'type' 'input:list'
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)' }               
+                
+        'macro' <%                     
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+ 
+	
+	{                
+        'title' 'Start Date for the 1st'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date for the 1st'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                         
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+    
+   
+   {                
+        'title' '2nd Plant'                
+        'x' 0 'y' 0 'w' 1 'h' 1                
+        'type' 'input:list'
+            'bgColor' 'DodgerBlue'
+                
+        'macro' <%                     
+            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant2' 'TurbineId2' ] 'selector' 'plant2' }  ] // Event definition                    
+            }                
+        %>  
+		
+    }  
+	{                
+        'title' '2nd Turbine'                
+        'x' 1 'y' 0 'w' 1 'h' 1              
+        'type' 'input:list' 
+        'options' { 'eventHandler' 'type=(variable),tag=(plant2)' }               
+        'macro' <%                     
+            [ $myreadtoken '~.*' { 'plant' $plant2 } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId2 } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId2' 'plant2' ] 'selector' 'TurbineId2' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+    
+ 
+	
+	{                
+        'title' 'Start Date for the 2nd'                
+        'x' 2 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate2' 'plant2' 'TurbineId2' ] 'selector' 'startDate2' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date for the 2nd'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                         
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate2' 'plant2' 'TurbineId2' ] 'selector' 'endDate2' }
+    ]                    
+            }                
+        %>            
+    }
+    
+			
+	{
+    'title' 'Power Curve Comparison'
+    'options' { 
+                'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|plant2|TurbineId2|startDate|endDate|startDate2|endDate2|ZOOM|FOCUS)' //TurbineId,plant,startDate,endDate,VariableId
+                'showLegend' true
+
+				}
+    'x' 0 'y' 1 'w' 6 'h' 4
+    'type' 'scatter' 
+    'macro' <%
+
+    
+  [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'TurbineId' $TurbineId 'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH 't1' STORE
+	   
+  [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+         $startDate2 TOSTRING 
+	 $endDate2 TOSTRING
+  ] FETCH 't2' STORE
+        $plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
+		$plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + 'turbine_name2' STORE
+
+    
+    //align timeseries
+      $endDate  "lastBucket" STORE  $endDate2 "lastBucket2" STORE 
+      $startDate  'start' STORE $startDate2  'start2' STORE
+
+      10 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $t1 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 't1' STORE
+      //[ $wind bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'wind' STORE
+      $lastBucket2 $start2 - $bucketSpan / TOLONG 1 + "bucketCount2" STORE
+      [ $t2 bucketizer.last $lastBucket2 $bucketSpan $bucketCount2 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 't2' STORE
+  
+    // find both zeros and remove for clear curve
+     [ $t1 1 GET 0.0 mapper.eq 0 0 0 ] MAP  'zeros1' STORE //for power
+     $zeros1 TICKLIST 0 GET 'serviceticks1' STORE
+     $t1 1 GET $serviceticks1 REMOVETICK 'power1' STORE 
+     $t1 0 GET $serviceticks1 REMOVETICK 'wind1' STORE 
+
+      [ $t2 1 GET 0.0 mapper.eq 0 0 0 ] MAP  'zeros2' STORE //for power
+     $zeros2 TICKLIST 0 GET 'serviceticks2' STORE
+     $t2 1 GET $serviceticks2 REMOVETICK 'power2' STORE 
+     $t2 0 GET $serviceticks2 REMOVETICK 'wind2' STORE 
+
+        $wind1 100 * VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$power1 VALUES FLATTEN // values
+		MAKEGTS $turbine_name1 ' # ' + $startDate TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data_merge' STORE
+		//[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
+        $data_merge DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 1 0 ] BUCKETIZE  3000 2850 TIMECLIP  'curve1' STORE // rlowess curve
+
+        $wind2 100 * VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$power2 VALUES FLATTEN // values
+		MAKEGTS $turbine_name2 ' # ' + $startDate2 TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data_merge2' STORE
+		//[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
+        $data_merge2 DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 1 0 ] BUCKETIZE  3000 2850 TIMECLIP  'curve2' STORE // rlowess curve
+
+          //calculate expected power with theoretical curve between selected dates
+        [] 'values' STORE
+        $wind1 SIZE 1 - 'len' STORE
+        0 $len <% 'i' STORE
+        $curve1 $wind1 100 * VALUES $i GET ATTICK 0 GET -1 GET 'value' STORE //change to theoretical if you like
+        <% $value NULL == %> <% 0 'value' STORE %> 
+        <% $value 'value' STORE %> 1 SWITCH
+        $values [ $value ] APPEND 'values' STORE
+        %> FOR
+
+        $wind1 TICKLIST
+        [] [] []
+        $values
+        MAKEGTS $turbine_name1 ' # ' + $startDate TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data' STORE // this is the timeseries of simulated active power 
+        
+        [] 'values' STORE
+        $wind1 SIZE 1 - 'len' STORE
+        0 $len <% 'i' STORE
+        $curve2 $wind1 100 * VALUES $i GET ATTICK 0 GET -1 GET 'value' STORE //change to theoretical if you like
+        <% $value NULL == %> <% 0 'value' STORE %> 
+        <% $value 'value' STORE %> 1 SWITCH
+        $values [ $value ] APPEND 'values' STORE
+        %> FOR
+
+        $wind1 TICKLIST
+        [] [] []
+        $values
+        MAKEGTS $turbine_name2 ' # ' + $startDate2 TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data2' STORE // this is the timeseries of simulated active power 
+      
+      [ $data bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 6 / TOLONG 'realpow' STORE
+      [ $data2 bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 6 / TOLONG 'simpow' STORE
+
+      [ $wind1 bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET  'realwind' STORE
+      [ $wind2 bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET  'simwind' STORE
+
+
+        
+
+	 { 'data' [ $curve1 $curve2 ] 
+     'params' [ { 'type' 'spline' }  { 'type' 'spline' } ]  
+     'globalParams' {  'timeMode' 'timestamp' 'showControls' true } 
+     'events' [
+        { 'tags' [ 'realpow' ] 'type' 'variable' 'value' { 'realpow' $realpow } }
+        { 'tags' [ 'simpow' ] 'type' 'variable' 'value' { 'simpow' $simpow } }
+        { 'tags' [ 'realwind' ] 'type' 'variable' 'value' { 'realwind' $realwind } }
+        { 'tags' [ 'simwind' ] 'type' 'variable' 'value' { 'simwind' $simwind } }
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+      } 
+	 
+      %>
+	  
+	  
+    }
+    // All variables comparison table (mean, tbd)
+
+    {
+      'type' 'tabular' 'x' 6 'y' 6 'w' 6 'h' 4
+      'title' 'Comparison Table'
+      'options' { 'eventHandler' 'type=variable,tag=(TurbineId|TurbineId2|plant|plant2|simpow|realpow|startDate|startDate2|realwind|simwind)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+        
+     $plant TOSTRING '-' + $TurbineId TOSTRING  + ' # ' + $startDate TOLONG ISO8601 'T' SPLIT 0 GET + 'turbine_name1' STORE
+     $plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + ' # ' + $startDate2 TOLONG ISO8601 'T' SPLIT 0 GET + 'turbine_name2' STORE
+
+        {
+          'columns' [ 'Variable' $turbine_name1 $turbine_name2 ]
+          'rows' [ [ 'Power Production(kWh)' $realpow $simpow TOSTRING ' (Simulated)' + ] 
+                   [ 'Wind Avg.(m/s)' $realwind $simwind ] ]        
+                  } 
+        'values' STORE
+    
+        { 'data' $values 
+          'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+    			
+	{
+    'title' 'Scatter Curve Comparison'
+    'options' { 
+                'eventHandler' 'type=(variable|zoom|focus),tag=(TurbineId|plant|plant2|TurbineId2|startDate|endDate|startDate2|endDate2|ZOOM|FOCUS)' //TurbineId,plant,startDate,endDate,VariableId
+                'showLegend' true
+
+				}
+    'x' 0 'y' 5 'w' 6 'h' 4
+    'type' 'scatter' 
+    'macro' <%
+
+    
+  [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'TurbineId' $TurbineId 'plant' $plant } 
+             $startDate TOSTRING 
+	 $endDate TOSTRING
+  ] FETCH 't1' STORE
+	   
+  [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'TurbineId' $TurbineId2 'plant' $plant2 } 
+         $startDate2 TOSTRING 
+	 $endDate2 TOSTRING
+  ] FETCH 't2' STORE
+        $plant TOSTRING '-' + $TurbineId TOSTRING  + 'turbine_name1' STORE
+		$plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + 'turbine_name2' STORE
+    
+    //align timeseries
+      $endDate  "lastBucket" STORE  $endDate2 "lastBucket2" STORE 
+      $startDate  'start' STORE $startDate2  'start2' STORE
+
+      10 m "bucketSpan" STORE // 1 minute
+      
+      //$data FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+      //$startDate TOTIMESTAMP 'start' STORE
+      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
+      [ $t1 bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 't1' STORE
+      //[ $wind bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 'wind' STORE
+      $lastBucket2 $start2 - $bucketSpan / TOLONG 1 + "bucketCount2" STORE
+      [ $t2 bucketizer.last $lastBucket2 $bucketSpan $bucketCount2 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT 't2' STORE
+  
+    // find both zeros and remove for clear curve
+     [ $t1 1 GET 0.0 mapper.eq 0 0 0 ] MAP  'zeros1' STORE //for power
+     $zeros1 TICKLIST 0 GET 'serviceticks1' STORE
+     $t1 1 GET $serviceticks1 REMOVETICK 'power1' STORE 
+     $t1 0 GET $serviceticks1 REMOVETICK 'wind1' STORE 
+
+      [ $t2 1 GET 0.0 mapper.eq 0 0 0 ] MAP  'zeros2' STORE //for power
+     $zeros2 TICKLIST 0 GET 'serviceticks2' STORE
+     $t2 1 GET $serviceticks2 REMOVETICK 'power2' STORE 
+     $t2 0 GET $serviceticks2 REMOVETICK 'wind2' STORE 
+
+        $wind1 100 * VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$power1 VALUES FLATTEN // values
+		MAKEGTS $turbine_name1 ' # ' + $startDate TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data_merge' STORE
+		//[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
+        //$data_merge DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 3000 2850 TIMECLIP  'curve1' STORE // rlowess curve
+
+        $wind2 100 * VALUES FLATTEN // ticks
+		[] [] []             // latitudes, longitudes and elevations
+		$power2 VALUES FLATTEN // values
+		MAKEGTS $turbine_name2 ' # ' + $startDate2 TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data_merge2' STORE
+		//[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
+        //$data_merge2 DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 3000 2850 TIMECLIP  'curve2' STORE // rlowess curve
+
+        
+
+	 { 'data' [ $data_merge $data_merge2 ] 
+     'params' [ { 'type' 'scatter' }  { 'type' 'scatter' } ]  
+     'globalParams' {  'timeMode' 'timestamp' 'showControls' true } 
+	 'events' [
+        { 'tags' [ 'ZOOM' ] 'type' 'zoom'  } // send zoom event on channel "chart2"
+        { 'tags' [ 'FOCUS' ] 'type' 'focus' } // send focus event on channel "chart2"
+      ]
+       }
+      %>
+	  
+	  
+    }
+
+    
+	
+  ]
+
+
+}
+

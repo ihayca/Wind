@@ -96,7 +96,7 @@
       ] FETCH 'total_data' STORE
      [ $total_data bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE  VALUES 0 GET 0 GET 'total_power' STORE
     [ $myreadtoken '~ACTIVE_POWER.*' { 'plant'  $plant 'type' 'Wind' 'TurbineId' $TurbineId } 
-        NOW 1 d //$startDate TOSTRING 
+        NOW -1 //$startDate TOSTRING 
         //$endDate TOSTRING
       ] FETCH 'data' STORE
      
@@ -219,7 +219,7 @@
    <% $status 7 == %> <% 'Service' 'status' STORE %>
    <% 'offline' 'status' STORE %> 7 SWITCH
     %>
-       <%
+     <% $manu 'Sinovel' == %>   <%
    <% $status 0 == %> <% 'Start' 'status' STORE %>
    <% $status 1 == %> <% 'Standby' 'status' STORE %>
    <% $status 2 == %> <% 'Production' 'status' STORE %>
@@ -228,7 +228,16 @@
    <% $status 5 == %> <% 'Low Temp.' 'status' STORE %>
    <% $status 6 == %> <% 'High wind' 'status' STORE %>
    <% 'offline' 'status' STORE %> 7 SWITCH
-       %> 1 SWITCH
+     %>
+     <% $manu 'Vestas' == %> <%
+   <% $status 1 == %> <% 'Run' 'status' STORE %>
+   <% $status 2 == %> <% 'Pause' 'status' STORE %>
+   <% $status 3 == %> <% 'Stop' 'status' STORE %>
+   <% $status 4 == %> <% 'Emergency' 'status' STORE %>
+   <% 'offline' 'status' STORE %> 4 SWITCH
+     %> 
+     <% %> 3 SWITCH
+       
    { 
      'data' $status
      }
@@ -409,6 +418,7 @@
         <% $total $time + 'total' STORE %> 7 SWITCH
                  %> FOR 
     %>
+    <% $manu 'Sinovel' == %>
     <%
 
    [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
@@ -454,7 +464,49 @@
         <% $status_name 'Low Temp.' == %> <% $total $time + 'total' STORE %>
         <% $total $time + 'total' STORE %> 7 SWITCH
                   %> FOR
-    %> 1 SWITCH
+    %> 
+    <% $manu 'Vestas' == %>
+    <% 
+
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Pause' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'pause' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Emergency' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'emergency' STORE
+    
+  [ $run $pause $stop $emergency ] 'gtslist' STORE
+   $gtslist SIZE 1 - 'gtslen' STORE
+   [] 'newlist' STORE
+
+   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE  
+    
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE
+           <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'duration' STORE %>
+           <% 'PT2M' DURATION 'duration' STORE %> 1 SWITCH
+           $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
+                    %> FOR
+                     %> 
+      <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP %> 1 SWITCH
+
+    $newlist [ $g ]  APPEND 'newlist' STORE
+   %> FOR 
+ 
+  [ $newlist bucketizer.sum 0 0 1 ] BUCKETIZE 'list' STORE  
+  0 'total' STORE
+  0 'avail' STORE
+  0 $list SIZE 1 - <% 'i' STORE 
+        $list $i GET NAME 'status_name' STORE
+        $list $i GET VALUES 0 GET 'time' STORE
+        <% $status_name 'Stop' == %> <% $total $time + 'total' STORE %>
+        <% $status_name 'Emergency' == %> <% $total $time + 'total' STORE %>
+        <% $status_name 'Pause' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
+        <% $status_name 'Run' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
+        <% $total $time + 'total' STORE %> 4 SWITCH
+                  %> FOR
+
+    %> 
+    <% %> 3 SWITCH
 
 
 
@@ -1214,47 +1266,36 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
 				}
     'x' 0 'y' 3 'w' 6 'h' 2
     'type' 'line' 'macro' <%
-         [ $myreadtoken '~(ACTIVE_POWER|WIND_SPEED).*' { 'plant' $plant 'TurbineId' $TurbineId } 
+         [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'plant' $plant 'TurbineId' $TurbineId } 
          //NOW 3 d 
          $startDate TOSTRING  $endDate TOSTRING 
       ] FETCH { '.app' '' '.uuid' '' 'type' '' } RELABEL 'inputs' STORE //get all wind speed for a period
       
-     $inputs LASTTICK  "lastBucket" STORE
+     $endDate "lastBucket" STORE
      10 m "bucketSpan" STORE // 1 minute
-     $inputs FIRSTTICK "start" STORE // count = ((end - start) / bucketspan) + 1
+     $startDate "start" STORE // count = ((end - start) / bucketspan) + 1
      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
      [ $inputs bucketizer.mean $lastBucket $bucketSpan $bucketCount ] BUCKETIZE 'bucket' STORE
-     $bucket [ NaN NaN NaN 0 ] FILLVALUE SORT 'bucket' STORE // fill all empty ticks with zero
+     //$bucket [ NaN NaN NaN 0 ] FILLVALUE SORT 'bucket' STORE // fill all empty ticks with zero
 
      $bucket 0 GET 'wind' STORE
      $bucket 1 GET 'pow' STORE
 
-
-// calculate turbine perf according to vendor power curve
-      //create curve of the turbine
-  $wind 100 * 'wind' STORE 
-
-   $wind VALUES FLATTEN  // ticks
-   [] [] []             // latitudes, longitudes and elevations
-   $pow VALUES FLATTEN // values
-   MAKEGTS
-  'data' RENAME 'data' STORE
-
-   [ $data bucketizer.mean 0 10 0 ] BUCKETIZE SORT 'turbinecurve' STORE 
 
     [ $myreadtoken '~(WIND_SPEED|ACTIVE_POWER).*' { 'plant' $plant 'TurbineId' $TurbineId } 
    //$startDate TOSTRING 
 	 //$endDate TOSTRING
      NOW MAXLONG ] FETCH 'x' STORE
 
+
            // find both zeros
      [ $x 0.0 mapper.eq 0 0 0 ] MAP 'zeros' STORE
      $zeros 0 GET $zeros 1 GET + TICKLIST 'serviceticks' STORE
-     $x 0 GET $serviceticks REMOVETICK 'xpower' STORE 
-     $x 1 GET $serviceticks REMOVETICK 'xwind' STORE 
-     [ $xpower $xwind ] 'x' STORE
-      
-     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
+     $x 0 GET $serviceticks REMOVETICK 'xwind' STORE 
+     $x 1 GET $serviceticks REMOVETICK 'xpower' STORE 
+     [ $xwind $xpower ] 'x' STORE
+  
+     $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 
     $chunk 0 GET 'windlist' STORE
     $chunk 1 GET 'powerlist' STORE
@@ -1270,9 +1311,9 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
    [] [] []             // latitudes, longitudes and elevations
    $bestpow VALUES FLATTEN // values
    MAKEGTS
-  $name RENAME 2000 1850 TIMECLIP 'bestdata' STORE
+  $name RENAME 3000 2850 TIMECLIP 'bestdata' STORE
   // [ $bestdata bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 2000 1800 TIMECLIP 'curve' STORE 
-  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 2000 1850 TIMECLIP 'curve' STORE // rlowess curve 
+  $bestdata DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 50 0 ] BUCKETIZE 3000 2850 TIMECLIP 'curve' STORE // rlowess curve 
   $curves $curve APPEND 'curves' STORE
   $energy [ $curve bucketizer.sum 0 0 1 ] BUCKETIZE APPEND 'energy' STORE 
    %> FOR
@@ -1285,6 +1326,8 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
    [ $bestcurve bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'bestcurve' STORE
 
   //calculate expected power with theoretical curve 
+    $wind 100 * 'wind' STORE 
+
   [] 'values' STORE
   $wind SIZE 1 - 'len' STORE
   0 $len <% 'i' STORE
@@ -1404,6 +1447,7 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
    %> FOR 
 
     %>
+    <% $manu 'Sinovel' == %>
     <%
      
    [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
@@ -1436,7 +1480,38 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
     //$newlist [ $g ] APPEND
   $g
    %> FOR
-    %> 1 SWITCH
+    %> 
+    <% $manu 'Vestas' == %> 
+    <% 
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Pause' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'pause' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Emergency' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'emergency' STORE
+
+   [ $run $pause $stop $emergency ] 'gtslist' STORE
+   $gtslist SIZE 1 - 'gtslen' STORE
+   [] 'newlist' STORE
+
+
+   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE  
+    
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE
+           <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'duration' STORE %>
+           <% 'PT2M' DURATION 'duration' STORE %> 1 SWITCH
+           $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
+                    %> FOR
+                    
+                           %> 
+        <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP %> 1 SWITCH
+ 
+    //$newlist [ $g ] APPEND
+  $g
+   %> FOR
+
+
+    %> <% %> 3 SWITCH
 
     %>
     }
@@ -1515,9 +1590,9 @@ MAKEGTS %>
         // find both zeros
      [ $x 0.0 mapper.eq 0 0 0 ] MAP 'zeros' STORE
      $zeros 0 GET $zeros 1 GET + TICKLIST 'serviceticks' STORE
-     $x 0 GET $serviceticks REMOVETICK 'power' STORE 
-     $x 1 GET $serviceticks REMOVETICK 'wind' STORE 
-     [ $power $wind ] 'x' STORE
+     $x 0 GET $serviceticks REMOVETICK 'wind' STORE 
+     $x 1 GET $serviceticks REMOVETICK 'power' STORE 
+     [ $wind $power ] 'x' STORE
       
      $x NONEMPTY [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE  NOW 4 w - 4 w 0 0 ".chunkid" false CHUNK 'chunk' STORE //here we create  1 week chunks of 10 m data
 

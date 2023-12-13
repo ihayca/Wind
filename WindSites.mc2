@@ -1298,7 +1298,16 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
           [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 5 filter.any.eq ] FILTER  'lowtemp' RENAME 'snlowtemp' STORE
           [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 6 filter.any.eq ] FILTER  'highwind' RENAME 'snhighwind' STORE
 
-        %> 1 SWITCH
+        %> 
+       /* <% $manu 'Vestas' == %> <%
+          [ $data [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER 'vsdata' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 1 filter.any.eq ] FILTER  'run' RENAME 'vsrun' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 2 filter.any.eq ] FILTER  'pause' RENAME 'vspause' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 3 filter.any.eq ] FILTER  'stop' RENAME 'vsstop' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 4 filter.any.eq ] FILTER  'emergency' RENAME 'vsemergency' STORE
+
+        %> 
+        <% %> 3 */ 1 SWITCH
 
      // get average wind for creating heatmap  
         [ $myreadtoken '~WIND_SPEED.*' { 'plant' $plant } 
@@ -1311,7 +1320,7 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
 	  $g MERGE 'speeds' STORE
       
       { 
-    'data'  [ $speeds $gwinit $gwstop $gwnowind $gwstart $gwrunup $gwpowprod $gwservice $snoffline $snstart $snnowind $snprod $snerror $snservice $snlowtemp $snhighwind ] 
+    'data'  [ $speeds $gwinit $gwstop $gwnowind $gwstart $gwrunup $gwpowprod $gwservice $snoffline $snstart $snnowind $snprod $snerror $snservice $snlowtemp $snhighwind ] // $vsrun $vspause $vsstop $vsemergency ] 
     'params' [
       { 'map' { 'heatmap' true } } // for visualising speeds 
       <%  $gwinit SIZE 0 > %> <% 0 $gwinit SIZE 1 - <% 'i' STORE {  "key" 'T-' $gwinit $i GET LABELS 'TurbineId' GET +  'color' '#008000' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // green for productions 
@@ -1329,6 +1338,11 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
       <%  $snservice SIZE 0 > %> <%  0 $snservice SIZE 1 - <% 'i' STORE { "key" 'T-' $snservice $i GET LABELS 'TurbineId' GET +  'color' '#FFFF00' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // yellow for service
       <%  $snlowtemp SIZE 0 > %> <%  0 $snlowtemp SIZE 1 - <% 'i' STORE { "key" 'T-' $snlowtemp $i GET LABELS 'TurbineId' GET +  'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
       <%  $snhighwind SIZE 0 > %> <%  0 $snhighwind SIZE 1 - <% 'i' STORE { "key" 'T-' $snhighwind $i GET LABELS 'TurbineId' GET +  'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop       
+     /*  <%  $vspause SIZE 0 > %> <%  0 $vspause SIZE 1 - <% 'i' STORE { "key" 'T-' $vspause $i GET LABELS 'TurbineId' GET + 'map' { 'iconSize' [ 28 28 ]  'tooltip' { $i 'Pause' } } 'color' '#0000FF' 'render' 'marker'  } %> FOR %> IFT // blue for standby
+      <%  $vsrun SIZE 0 > %> <%  0 $vsrun SIZE 1 - <% 'i' STORE { "key" 'T-' $vsrun $i GET LABELS 'TurbineId' GET + 'map' { 'iconSize' [ 28 28 ]  'tooltip' { 1 'Production' } } 'color' '#008000' 'render' 'marker'  } %> FOR %> IFT // green for productions
+      <%  $vsemergency SIZE 0 > %> <%  0 $vsemergency SIZE 1 - <% 'i' STORE { "key" 'T-' $vsemergency $i GET LABELS 'TurbineId' GET +  'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
+      <%  $vsstop SIZE 0 > %> <%  0 $vsstop SIZE 1 - <% 'i' STORE { "key" 'T-' $vsstop $i GET LABELS 'TurbineId' GET +  'color' '#FFFF00' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // yellow for service
+      */
       ]
     'globalParams' { 'map' { 'mapType' 'SATELLITE' 'heatRadius' 25 'heatOpacity' 0.1 'track' true } } 
       }
@@ -1463,6 +1477,7 @@ $listOfTurbines SIZE 'numTurbines' STORE
         <% $total $time + 'total' STORE %> 7 SWITCH
                  %> FOR 
     %>
+    <% $manu 'Sinovel' == %>
     <%
 
    [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
@@ -1508,7 +1523,47 @@ $listOfTurbines SIZE 'numTurbines' STORE
         <% $status_name 'Low Temp.' == %> <% $total $time + 'total' STORE %>
         <% $total $time + 'total' STORE %> 7 SWITCH
                   %> FOR
-    %> 1 SWITCH
+    %>
+    <% $manu 'Vestas' == %> <% 
+      [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Pause' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'pause' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Emergency' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'emergency' STORE
+    
+  [ $run $pause $stop $emergency ] 'gtslist' STORE
+   $gtslist SIZE 1 - 'gtslen' STORE
+   [] 'newlist' STORE
+
+   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE  
+    
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE
+           <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'duration' STORE %>
+           <% 'PT2M' DURATION 'duration' STORE %> 1 SWITCH
+           $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
+                    %> FOR
+                     %> 
+      <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP %> 1 SWITCH
+
+    $newlist [ $g ]  APPEND 'newlist' STORE
+   %> FOR 
+ 
+  [ $newlist bucketizer.sum 0 0 1 ] BUCKETIZE 'list' STORE  
+  0 'total' STORE
+  0 'avail' STORE
+  0 $list SIZE 1 - <% 'i' STORE 
+        $list $i GET NAME 'status_name' STORE
+        $list $i GET VALUES 0 GET 'time' STORE
+        <% $status_name 'Stop' == %> <% $total $time + 'total' STORE %>
+        <% $status_name 'Emergency' == %> <% $total $time + 'total' STORE %>
+        <% $status_name 'Pause' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
+        <% $status_name 'Run' == %> <% $total $time + 'total' STORE $avail $time + 'avail' STORE %>
+        <% $total $time + 'total' STORE %> 4 SWITCH
+                  %> FOR
+
+    %>
+    <% %> 3 SWITCH
 
 
 
