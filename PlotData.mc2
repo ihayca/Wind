@@ -9,7 +9,7 @@
       'showLoader' true 
 
       'scheme' 'BELIZE'
-       'timeZone' 'Europe/Istanbul'       
+       'timeZone' 'Europe/Istanbul'     
          }
 		 
   'vars' {

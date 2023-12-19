@@ -29,7 +29,7 @@
             {                        
                 'data' $listOfPlants                        
                 'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
-                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' ] 'selector' 'plant' }  ] // Event definition                    
             }                
         %>  
 		
@@ -45,7 +45,7 @@
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
-                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' 'plant' ] 'selector' 'TurbineId' }  ] // Event definition                    
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' ] 'selector' 'TurbineId' }  ] // Event definition                    
             }                
         %>            
     } 
@@ -59,7 +59,7 @@
             {                        
                 'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                       
                 'events' [
-    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    { 'type' 'variable' 'tags' [ 'startDate' ] 'selector' 'startDate' }
     ]                    
             }                
         %>            
@@ -74,7 +74,7 @@
             {                        
                 'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                     
                 'events' [
-    { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
+    { 'type' 'variable' 'tags' [ 'endDate' ] 'selector' 'endDate' }
     ]                    
             }                
         %>            
@@ -230,9 +230,9 @@
    <% 'offline' 'status' STORE %> 7 SWITCH
      %>
      <% $manu 'Vestas' == %> <%
-   <% $status 1 == %> <% 'Run' 'status' STORE %>
+   <% $status 3 == %> <% 'Run' 'status' STORE %>
    <% $status 2 == %> <% 'Pause' 'status' STORE %>
-   <% $status 3 == %> <% 'Stop' 'status' STORE %>
+   <% $status 1 == %> <% 'Stop' 'status' STORE %>
    <% $status 4 == %> <% 'Emergency' 'status' STORE %>
    <% 'offline' 'status' STORE %> 4 SWITCH
      %> 
@@ -468,9 +468,9 @@
     <% $manu 'Vestas' == %>
     <% 
 
-   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
    [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Pause' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'pause' STORE
-   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
    [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Emergency' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'emergency' STORE
     
   [ $run $pause $stop $emergency ] 'gtslist' STORE
@@ -1483,9 +1483,9 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
     %> 
     <% $manu 'Vestas' == %> 
     <% 
-   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
    [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Pause' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'pause' STORE
-   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
    [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Emergency' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'emergency' STORE
 
    [ $run $pause $stop $emergency ] 'gtslist' STORE

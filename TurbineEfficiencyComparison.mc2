@@ -37,7 +37,7 @@
 		
 
 {                
-        'title' '1st Plant'                
+        'title' 'Target Plant'                
         'x' 0 'y' 0 'w' 1 'h' 1                
         'type' 'input:list'                
         'macro' <%                     
@@ -51,7 +51,7 @@
 		
     }  
 	{                
-        'title' '1st Turbine'                
+        'title' 'Trg. Turbine'                
         'x' 1 'y' 0 'w' 1 'h' 1              
         'type' 'input:list'
         'options' { 'eventHandler' 'type=(variable),tag=(plant)' }               
@@ -69,7 +69,7 @@
  
 	
 	{                
-        'title' 'Start Date for the 1st'                
+        'title' 'Start Date for the Target'                
         'x' 2 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
@@ -84,7 +84,7 @@
     } 
 	
 	{                
-        'title' 'End  Date for the 1st'                
+        'title' 'End  Date for the Target'                
         'x' 4 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
@@ -100,7 +100,7 @@
     
    
    {                
-        'title' '2nd Plant'                
+        'title' 'Ref. Plant'                
         'x' 0 'y' 0 'w' 1 'h' 1                
         'type' 'input:list'
             'bgColor' 'DodgerBlue'
@@ -116,7 +116,7 @@
 		
     }  
 	{                
-        'title' '2nd Turbine'                
+        'title' 'Ref. Turbine'                
         'x' 1 'y' 0 'w' 1 'h' 1              
         'type' 'input:list' 
         'options' { 'eventHandler' 'type=(variable),tag=(plant2)' }               
@@ -133,7 +133,7 @@
  
 	
 	{                
-        'title' 'Start Date for the 2nd'                
+        'title' 'Start Date for the Reference'                
         'x' 2 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
@@ -148,7 +148,7 @@
     } 
 	
 	{                
-        'title' 'End  Date for the 2nd'                
+        'title' 'End  Date for the Reference'                
         'x' 4 'y' 0 'w' 2 'h' 1              
         'type' 'input:date'                
         'macro' <%                     
@@ -219,6 +219,7 @@
 		MAKEGTS $turbine_name1 ' # ' + $startDate TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data_merge' STORE
 		//[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
         $data_merge DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 1 0 ] BUCKETIZE  3000 2850 TIMECLIP  'curve1' STORE // rlowess curve
+           [ $curve1 bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'curve1' STORE
 
         $wind2 100 * VALUES FLATTEN // ticks
 		[] [] []             // latitudes, longitudes and elevations
@@ -226,6 +227,8 @@
 		MAKEGTS $turbine_name2 ' # ' + $startDate2 TOLONG ISO8601 'T' SPLIT 0 GET + RENAME 'data_merge2' STORE
 		//[ $data_merge bucketizer.mean 0 50 0 ] BUCKETIZE INTERPOLATE SORT 'mean_spline' STORE
         $data_merge2 DEDUP SORT 55 50 0 1 RLOWESS [ SWAP bucketizer.last 0 1 0 ] BUCKETIZE  3000 2850 TIMECLIP  'curve2' STORE // rlowess curve
+           [ $curve2 bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'curve2' STORE
+
 
           //calculate expected power with theoretical curve between selected dates
         [] 'values' STORE
@@ -293,13 +296,14 @@
       }
       'macro' <%
         
-     $plant TOSTRING '-' + $TurbineId TOSTRING  + ' # ' + $startDate TOLONG ISO8601 'T' SPLIT 0 GET + 'turbine_name1' STORE
-     $plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + ' # ' + $startDate2 TOLONG ISO8601 'T' SPLIT 0 GET + 'turbine_name2' STORE
+     $plant TOSTRING '-' + $TurbineId TOSTRING  + ' # ' + $startDate TOLONG ISO8601 'T' SPLIT 0 GET + ' (Target)' + 'turbine_name1' STORE
+     $plant2 TOSTRING '-' + $TurbineId2 TOSTRING  + ' # ' + $startDate2 TOLONG ISO8601 'T' SPLIT 0 GET + ' (Reference)' + 'turbine_name2' STORE
 
         {
           'columns' [ 'Variable' $turbine_name1 $turbine_name2 ]
           'rows' [ [ 'Power Production(kWh)' $realpow $simpow TOSTRING ' (Simulated)' + ] 
-                   [ 'Wind Avg.(m/s)' $realwind $simwind ] ]        
+                   [ 'Wind Avg.(m/s)' $realwind $simwind ] 
+                   [ 'Efficiency.(pct)' $realpow TODOUBLE $simpow TODOUBLE / 100 * 100 - ] ]        
                   } 
         'values' STORE
     

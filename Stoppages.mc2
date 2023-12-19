@@ -5,10 +5,12 @@
  
   'cellHeight' 100   
   'options' { 
-    'showErrors' true  'eventHandler' 'type=popup,tag=dashboard'
+    'showErrors' true 
+     'eventHandler' 'type=popup,tag=popup'
       'scheme' 'CHARTANA'
             'timeZone' 'Europe/Istanbul' 
-             'showLoader' true       
+             'showLoader' true 
+      
          }
 		 
   'vars' {
@@ -135,7 +137,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
     }
 
      {
-      'type' 'input:list' 'x' 7 'y' 0  'w' 2 'h' 1
+      'type' 'input:list' 'x' 7 'y' 0  'w' 1 'h' 1
       'options' { 'eventHandler' 'type=(variable),tag=(TurbineId|plant)'
                   // suscribe to events
       
@@ -155,7 +157,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
     }
 
         {
-      'type' 'input:list' 'x' 9 'y' 0  'w' 2 'h' 1
+      'type' 'input:list' 'x' 8 'y' 0  'w' 1 'h' 1
       'options' { 'eventHandler' 'type=(variable),tag=(TurbineId|plant)'
                   // suscribe to events
       
@@ -181,7 +183,7 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
         'button' { 'label' 'Submit' }
         'eventHandler' 'type=variable,tag=(status_event|status_origin|comp_code|plant|TurbineId|duration)'
       }
-      'x' 11 'y' 0  'w' 1 'h' 1
+      'x' 9 'y' 0  'w' 1 'h' 1
       'macro' <% 
         { 
           'data' <%  
@@ -214,6 +216,574 @@ $outageList <% '|' SPLIT 0 GET TOLONG %> SORTBY 'outageList' STORE
         }
       %>
     }
+
+    /// add new maintenance to db
+{
+         'type' 'button'
+         'title' 'Add New Maintenance'
+         'options' {
+          'button' { 'label' 'Add New' }
+         }
+         'w' 2 'h' 1 'x' 10 'y' 0
+         'macro' <% { 'data' <%
+            { 'data' ''
+             'events' [
+                { 'tags' [ 'popup' ] 'type' 'popup'
+                  'value'
+                  { 'title' 'Enter Maintenance Data'
+                  'cellHeight' 80
+                  'vars' {  
+                            'plant' 'Yalova'
+                            'TurbineId' '1'
+                            'winds' '0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500'
+                            'powers' '0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410 458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0'
+                            'manufacturer' 'Manufacturer'
+                            'model' 'Model'
+                            'status_origin' 'Select'
+                            'comp_code' 'Select'
+                            'comment' ''
+                            'startDate' [ NOW 2 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
+                            'endDate' NOW //1658913094000000   //604800000000
+
+                            'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+   
+                            'writetoken' 'VLMWo2sl_0j0ml.KHLpaa7lr14wLn_fAffcp.pGvv989p7MFOcyR9yF.nOrDqB2jgNR1iN93WCYav0lawYiRt0zuNWvDJhBeaVEzlGwVNBeIlRkhkv1OpUYymIiUZYMR' 
+
+  }
+                  
+                   'tiles' [   ///dashboard tile start
+       {                
+        'title' 'Plant'                
+        'x' 0 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            //[ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE  
+            [ 'Usak-SN' 'Usak-GW' 'Yalova' 'Soke' ] 'listOfPlants' STORE         
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'plant' 'TurbineId' ] 'selector' 'plant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    } 
+     	{                
+        'title' 'Turbines'                
+        'x' 2 'y' 0 'w' 2 'h' 1            
+        'type' 'input:list' // 'input:list'  
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)'
+                     'input' { 'showButton' true 'showFilter' true } } //subscribe to plant event              
+        'macro' <%     
+             <% $plant 'Usak-SN' CONTAINS %> <% 'Usak' 'plant' STORE 'Sinovel' 'manufacturer' STORE %>
+             <% $plant 'Usak-GW' CONTAINS %> <% 'Usak' 'plant' STORE 'Goldwind' 'manufacturer' STORE %>
+             <% '' 'manufacturer' STORE %> 2 SWITCH
+
+            [ $myreadtoken '~.*' { 'plant' $plant 'manufacturer' $manufacturer } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                     
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'TurbineId' ] 'selector' 'TurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+
+    {                
+        'title' 'Start Date'                
+        'x' 4 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 2 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 6 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                      
+                'events' [
+    { 'type' 'variable' 'tags' [ 'endDate' ] 'selector' 'endDate' }
+    ]                    
+            }                
+        %>            
+    }
+
+    {
+      'type' 'input:list' 'x' 8 'y' 0  'w' 2 'h' 1
+      'options' { 'eventHandler' 'type=(variable),tag=(TurbineId|plant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Origin'
+      'macro' <% 
+
+        [  'Manufacturer' 'Buyer' 'Environmental' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'status_origin' 'type' 'variable' 'selector' 'status_origin' } ]
+        'globalParams' { 'input' { 'value' $status_origin 'showButton' true } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+        {
+      'type' 'input:list' 'x' 10 'y' 0  'w' 2 'h' 1
+      'options' { 'eventHandler' 'type=(variable),tag=(TurbineId|plant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Component'
+      'macro' <% 
+
+        [  'Environmental' 'Generator' 'Gearbox' 'Converter' 'Rotor' 'Pitch' 'Yaw' 'Electrical' 'Cooling' 'Auxilary' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'comp_code' 'type' 'variable' 'selector' 'comp_code' } ]
+        'globalParams' { 'input' { 'value' $comp_code 'showButton' true } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+    {
+      'type' 'tabular' 'x' 0 'y' 3 'w' 12 'h' 4
+      'title' 'Stoppages Table'
+      'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|plant)'
+                  // suscribe to events
+        'tabular' { 'fixedWidth' true }
+      }
+      'macro' <%
+       // build turbine labels for selected turbines
+       // $TurbineId '|' JOIN 'TurbineId' STORE
+       // '~(' $TurbineId + ')' + 'TurbineId' STORE
+
+      // select turbines according to list
+         <% $plant 'Usak-SN' CONTAINS %> <% 'Usak' 'plant' STORE 'Sinovel' 'manufacturer' STORE %>
+         <% $plant 'Usak-GW' CONTAINS %> <% 'Usak' 'plant' STORE 'Goldwind' 'manufacturer' STORE %>
+         <% '' 'manufacturer' STORE %> 2 SWITCH
+
+
+// get statuses for selected turbines
+[ $myreadtoken 'PLC_STATUS' {  'plant' $plant 'TurbineId' $TurbineId } 
+         $startDate 1 d - TOSTRING
+         $endDate TOSTRING 
+  ] FETCH 'data' STORE
+	$data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes
+
+  [ $data bucketizer.last 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT SORT [ 'TurbineId' ] METASORT 'allbucket' STORE
+  $allbucket $endDate $startDate  TIMECLIP 'allbucket' STORE // we took 1 day before for alignment, so correct here
+  [] 'rows' STORE
+  [] 'trows' STORE //rows with timestamp to send in an event
+  [] 'newlist' STORE 
+
+  0 $allbucket SIZE 1 - <% 'b' STORE
+    
+    $allbucket $b GET 'bucket' STORE
+
+    $bucket LABELS 'TurbineId' GET 'turbine' STORE 
+    $bucket LABELS 'plant' GET 'plant' STORE 
+    $bucket LABELS 'manufacturer' GET 'manu' STORE
+    
+      
+            
+
+    //check for different manufacturers
+    <% $manu 'Goldwind' == %> <% 
+
+      [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 ]  // ticks
+[] [] []             // latitudes longitudes and elevations
+[  0.0 71.93 176.19 309.28 467.23 654.11 878.35 1142.83
+                           1458.27 1821.29 2235.62 2693.52 3204.79 3744.81 4281.41 4766.49 
+                           5175.59 5513.27 5767.25 5913.71 5973.0 5992.50 5995.0 
+                           6000.0 6000.0 6000.0 6000.0 6000.0 6000.0 6000.0 6000.0
+                           5993.88 5991.75 5936.25 5802.50 5503.0 5091.0
+                           4624.25 4109.25 3553.25 3073.50 2575.25 2187.75 1848.61
+                           ] // values
+MAKEGTS 'Goldwind' RENAME 'Goldwind' STORE
+[ $Goldwind bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'theoretical' STORE  // interpolate the empty points
+
+   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Initialization' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'initial' STORE
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standstill' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Starting' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'power' STORE
+   [ $bucket 9 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
+
+  [ $initial $stop $start $service ] 'gtslist' STORE
+   $gtslist SIZE 1 - 'gtslen' STORE
+
+  0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE //start of for
+    $status 0 GET NAME 'status_name' STORE
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE  //start of for
+                      $ticks 0 GET 'start' STORE //start of status
+                      $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+
+                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE
+                      
+                         //calculate lost power
+                               // get wind speed for selected turbines to find lost power
+                        [ $myreadtoken 'WIND_SPEED' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                                $ticks 0 GET ISO8601
+                                $ticks 1 GET ISO8601
+                          ] FETCH 'twind' STORE
+                          $twind { '.app' '' '.uuid' '' } RELABEL 'winds' STORE //relabel the atributes
+
+                          [ $twind bucketizer.mean 0 1 m 0 ] BUCKETIZE 'lwind' STORE // bucketize winds for 1 m for lost wind
+                          <% $lwind [] != %> <%   
+
+                        //calculate expected power with theoretical curve 
+                          $lwind 0 GET 100 * 'lwind' STORE
+                          [] 'values' STORE
+                          $lwind SIZE 1 - 'len' STORE
+                          0 $len <% 'v' STORE
+                          $theoretical $lwind VALUES $v GET ATTICK 0 GET -1 GET 'value' STORE  //for theoretical put instead bestcurve
+                          <% $value NULL == %> <% 0 'value' STORE %> 
+                          <% $value 'value' STORE %> 1 SWITCH
+                          $values [ $value ] APPEND 'values' STORE
+                          %> FOR
+
+                          $lwind TICKLIST
+                          [] [] []
+                          $values
+                          MAKEGTS 'Expected' RENAME 'lost' STORE 
+                          [ $lost bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 60 / TOLONG 'lostpwr' STORE
+                      //[ $lwind bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'lostpwr' STORE
+                      %> <% '0' 'lostpwr' STORE %> IFTE
+                    
+                      
+                       %>
+                      <% 'PT2M' DURATION 'tduration' STORE '0' 'expected' STORE '0' 'lostpwr' STORE %> 1 SWITCH
+
+                      $g $ticks 0 GET NaN NaN NaN $duration ADDVALUE DROP
+                      $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE  //get human duration
+
+                      // calculate lost power
+
+                      //check if stoppage is reported
+                      $ticks 0 GET  $tduration + 2 m + 'endtick' STORE
+                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                       $ticks 0 GET ISO8601 $endtick ISO8601 ] FETCH 'report' STORE
+                       <% $report [] == %> <% 'No' 'reported' STORE %> <% 'Yes' 'reported' STORE %> IFTE
+
+                      $rows [ [ $turbine $manu $start $duration $lostpwr $status_name $reported ] ] APPEND 'rows' STORE //rows for display
+                      $trows [ [ $turbine $manu $start $tduration $status_name $reported ] ] APPEND 'trows' STORE //rows for events
+
+                    %> FOR  //end of for
+              %> 
+              <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP 
+                   $status 0 GET FIRSTTICK 'start' STORE
+                   $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+                   0 'tduration' STORE
+                   $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+                   //$rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE  
+                   
+                   %> 1 SWITCH
+
+    $newlist [ $g ]  APPEND 'newlist' STORE
+   %> FOR 
+ 
+ 
+    %>
+    //here we start for sinovel
+    <% $manu 'Sinovel' == %>
+    <%
+    
+    // create theoretical power VALUES
+     [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+               [] [] []             // latitudes longitudes and elevations
+               [ 0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410
+                           458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 
+                           1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 
+                           1500.0 1500.0 1500.0 1500.0 1500.0 1500.0  1500.0
+                            1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0
+                            1500.0 1500.0 ] // values
+              MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
+
+  [ $theoretical bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'theoretical' STORE 
+
+   [ $bucket -1 mapper.eq 0 0 0 ] MAP 'Offline' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'offline' STORE
+   [ $bucket 0 mapper.eq 0 0 0 ] MAP 'Start' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'start' STORE
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Standby' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'standby' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'production' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Error' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'error' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Service' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'service' STORE
+   [ $bucket 5 mapper.eq 0 0 0 ] MAP 'Low Temp.' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'lowtemp' STORE
+   [ $bucket 6 mapper.eq 0 0 0 ] MAP 'High Wind' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'highwind' STORE
+    
+  [ $offline $start $error $service $lowtemp $highwind ] 'gtslist' STORE // put status gts for turbine in a list
+   $gtslist SIZE 1 - 'gtslen' STORE
+   // 
+
+   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE //start of for
+    $status 0 GET NAME 'status_name' STORE
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE  //start of for
+                      $ticks 0 GET 'start' STORE //start of status
+                      $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+
+                      // calculate stoppage duration and power if duration is bigger than 2 m
+                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE
+                             // get wind speed for selected turbines to find lost power
+                        [ $myreadtoken 'WIND_SPEED' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                                $ticks 0 GET ISO8601
+                                $ticks 1 GET ISO8601
+                          ] FETCH 'twind' STORE
+                          $twind { '.app' '' '.uuid' '' } RELABEL 'winds' STORE //relabel the atributes
+
+                          [ $twind bucketizer.mean 0 1 m 0 ] BUCKETIZE 'lwind' STORE // bucketize winds for 1 m for lost wind
+                          <% $lwind [] != %> <%   
+
+                        //calculate expected power with theoretical curve 
+                          $lwind 0 GET 100 * 'lwind' STORE
+                          [] 'values' STORE
+                          $lwind SIZE 1 - 'len' STORE
+                          0 $len <% 'v' STORE
+                          $theoretical $lwind VALUES $v GET ATTICK 0 GET -1 GET 'value' STORE  //for theoretical put instead bestcurve
+                          <% $value NULL == %> <% 0 'value' STORE %> 
+                          <% $value 'value' STORE %> 1 SWITCH
+                          $values [ $value ] APPEND 'values' STORE
+                          %> FOR
+
+                          $lwind TICKLIST
+                          [] [] []
+                          $values
+                          MAKEGTS 'Expected' RENAME 'lost' STORE 
+                          [ $lost bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 60 / TOLONG 'lostpwr' STORE
+                      //[ $lwind bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'lostpwr' STORE
+                      %> <% '0' 'lostpwr' STORE %> IFTE
+                      
+                      
+                      %>
+                      <% 'PT2M' DURATION 'tduration' STORE '0' 'expected' STORE '0' 'lostpwr' STORE %> 1 SWITCH
+                      //add duration to new gts
+                      $g $ticks 0 GET NaN NaN NaN $tduration ADDVALUE DROP
+                      $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE // get human duration
+
+                      
+                     
+
+                      //check if stoppage is reported
+                      $ticks 0 GET  $tduration + 2 m + 'endtick' STORE
+                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                       $ticks 0 GET 2 m - ISO8601 $endtick ISO8601 ] FETCH 'report' STORE
+                       <% $report [] == %> <% 'No' 'reported' STORE %> <% 'Yes' 'reported' STORE %> IFTE
+
+                      $rows [ [ $turbine $manu $start $duration $lostpwr $status_name $reported ] ] APPEND 'rows' STORE //rows for display
+                      $trows [ [ $turbine $manu $start $tduration $status_name $reported ] ] APPEND 'trows' STORE //rows for events
+
+                    %> FOR  //end of for
+              %> 
+              <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP 
+                   $status 0 GET FIRSTTICK 'start' STORE
+                   $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+                   0 'tduration' STORE
+                   $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+                   //$rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE  
+                   
+                   %> 1 SWITCH
+
+    $newlist [ $g ]  APPEND 'newlist' STORE // put start dates and durations to turbine status list
+
+    
+   %> FOR //end of for          
+
+    %> 
+    //here start for vestas
+    <% $manu 'Vestas' == %> <% 
+    
+
+    // create theoretical power VALUES
+     [ 0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 
+               1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500 ]  // ticks
+               [] [] []             // latitudes longitudes and elevations
+               [ 0.0 22.00 73.00 134.00 209.00 302.00 415.00 552.00
+                           714.00 906.00 1123.00 1370.00 1648.00 1950.00 2268.00 2586.00 
+                           2868.00 3071.00 3201.00 3266.00 3291.00 3298.00 3299.00 
+                           3300.0 3300.0 3300.0 3300.0 3300.0 3300.0 3300.0 
+                           3300.0 3300.0 3300.0 3300.0 3300.0 3300.0  3300.0
+                            3300.0 3300.0 3300.0 3300.0 3300.0 3300.0 3300.0
+                            3300.0 3300.0 ] // values
+              MAKEGTS 2500 2400 TIMECLIP 'theoretical' STORE
+
+  [ $theoretical bucketizer.mean 0 1 0 ] BUCKETIZE INTERPOLATE SORT 'theoretical' STORE 
+
+   [ $bucket 1 mapper.eq 0 0 0 ] MAP 'Run' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'run' STORE
+   [ $bucket 2 mapper.eq 0 0 0 ] MAP 'Pause' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'pause' STORE
+   [ $bucket 3 mapper.eq 0 0 0 ] MAP 'Stop' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'stop' STORE
+   [ $bucket 4 mapper.eq 0 0 0 ] MAP 'Emergency' RENAME { 'type' '' 'plant' '' } RELABEL 2 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT 'emergency' STORE
+    
+  [ $stop $emergency ] 'gtslist' STORE // put status gts for turbine in a list
+   $gtslist SIZE 1 - 'gtslen' STORE
+   // 
+
+   0 $gtslen <% 'i' STORE $gtslist $i GET 'status' STORE $status NONEMPTY SIZE 1 - 'statuslen' STORE //start of for
+    $status 0 GET NAME 'status_name' STORE
+    NEWGTS $status 0 GET NAME RENAME 'g' STORE
+     <% $statuslen 0 >= %> <%
+       0 $statuslen <% 'j' STORE $status $j GET TICKLIST 'ticks' STORE  //start of for
+                      $ticks 0 GET 'start' STORE //start of status
+                      $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+
+                      // calculate stoppage duration and power if duration is bigger than 2 m
+                      <% $ticks SIZE 1 > %> <% $ticks 1 GET $ticks 0 GET - 'tduration' STORE
+                             // get wind speed for selected turbines to find lost power
+                        [ $myreadtoken 'WIND_SPEED' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                                $ticks 0 GET ISO8601
+                                $ticks 1 GET ISO8601
+                          ] FETCH 'twind' STORE
+                          $twind { '.app' '' '.uuid' '' } RELABEL 'winds' STORE //relabel the atributes
+
+                          [ $twind bucketizer.mean 0 1 m 0 ] BUCKETIZE 'lwind' STORE // bucketize winds for 1 m for lost wind
+                          <% $lwind [] != %> <%   
+
+                        //calculate expected power with theoretical curve 
+                          $lwind 0 GET 100 * 'lwind' STORE
+                          [] 'values' STORE
+                          $lwind SIZE 1 - 'len' STORE
+                          0 $len <% 'v' STORE
+                          $theoretical $lwind VALUES $v GET ATTICK 0 GET -1 GET 'value' STORE  //for theoretical put instead bestcurve
+                          <% $value NULL == %> <% 0 'value' STORE %> 
+                          <% $value 'value' STORE %> 1 SWITCH
+                          $values [ $value ] APPEND 'values' STORE
+                          %> FOR
+
+                          $lwind TICKLIST
+                          [] [] []
+                          $values
+                          MAKEGTS 'Expected' RENAME 'lost' STORE 
+                          [ $lost bucketizer.sum 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 60 / TOLONG 'lostpwr' STORE
+                      //[ $lwind bucketizer.mean 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'lostpwr' STORE
+                      %> <% '0' 'lostpwr' STORE %> IFTE
+                      
+                      
+                      %>
+                      <% 'PT2M' DURATION 'tduration' STORE '0' 'expected' STORE '0' 'lostpwr' STORE %> 1 SWITCH
+                      //add duration to new gts
+                      $g $ticks 0 GET NaN NaN NaN $tduration ADDVALUE DROP
+                      $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE // get human duration
+
+                      
+                     
+
+                      //check if stoppage is reported
+                      $ticks 0 GET  $tduration + 2 m + 'endtick' STORE
+                      [ $myreadtoken 'PLC_STATUS_REPORT' {  'plant' $plant 'TurbineId' $turbine TOSTRING } 
+                       $ticks 0 GET 2 m - ISO8601 $endtick ISO8601 ] FETCH 'report' STORE
+                       <% $report [] == %> <% 'No' 'reported' STORE %> <% 'Yes' 'reported' STORE %> IFTE
+
+                      $rows [ [ $turbine $manu $start $duration $lostpwr $status_name $reported ] ] APPEND 'rows' STORE //rows for display
+                      $trows [ [ $turbine $manu $start $tduration $status_name $reported ] ] APPEND 'trows' STORE //rows for events
+
+                    %> FOR  //end of for
+              %> 
+              <%  $g $status 0 GET FIRSTTICK NaN NaN NaN 0 ADDVALUE DROP 
+                   $status 0 GET FIRSTTICK 'start' STORE
+                   $start 'Europe/Istanbul' ISO8601 '.' SPLIT 0 GET 'start' STORE
+                   0 'tduration' STORE
+                   $tduration HUMANDURATION '.' SPLIT 0 GET 's' + 'duration' STORE 
+                   //$rows [ [ $turbine $manu $start $duration $status_name ] ] APPEND 'rows' STORE  
+                   
+                   %> 1 SWITCH
+
+    $newlist [ $g ]  APPEND 'newlist' STORE // put start dates and durations to turbine status list
+
+    
+   %> FOR //end of for  
+
+    %>
+    <% %> 3 SWITCH
+   
+   
+  
+  %> FOR
+
+             {
+          'columns' [ 'TurbineId' 'Manufacturer' 'Start Date' 'Duration' 'Lost Power(kWh)' 'Status' 'Reported' ]
+          'rows' $rows
+        } 
+        'values' STORE
+
+          {
+          'columns' [ 'TurbineId' 'Manufacturer' 'Start Date' 'Duration' 'Status' 'Reported' ]
+          'rows' $trows
+        } 
+        'tvalues' STORE
+    
+        { 'data' $values
+          'events' [ { 'type' 'variable' 'tags' [ 'result' ] 'value' $tvalues }  ] 
+          'globalParams' {
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+
+
+                   {
+      'type' 'input:text'
+      'title' 'Comments'
+      'w' 12 'h' 1 'x' 0 'y' 1
+      'macro' <% { 'data' $comment 'events' [ { 'tags' [ 'comment' ] 'type' 'variable' 'selector' 'comment' } ] } %>
+    }
+     
+       {
+      'type' 'button'
+      'title' 'Save'
+      'options' {
+        'button' { 'label' 'Save to DB' }
+        'eventHandler' 'type=variable,tag=(status_origin|comp_code|plant|TurbineId|starDate|endDate|comment)'
+      }
+      'w' 2 'h' 1 'x' 5 'y' 2
+      'macro' <% 
+        {            
+            'data' <%
+
+        [ $winds ' ' SPLIT <% TOLONG %> FOREACH ] //winds as ticklist
+        [] [] [] //empty latlongelev
+        [ $powers ' ' SPLIT <% TODOUBLE %> FOREACH ] //powers as curve
+        MAKEGTS { 'Manufacturer' $manufacturer 'Model' $model } RELABEL 'curve' RENAME 'curve' STORE
+       // $maintenance $writetoken UPDATE
+        
+           { 'data' $curve 
+              'events' [ { 'type' 'variable' 'tags' [ 'model' ] 'value' $model }  ] 
+              }
+            %>
+
+        }
+      %>
+    }
+
+                ] } /// dashboard tile end
+                }
+               ]
+             }
+          %> } %>
+       }
+       ////////////////////////
 
  {
       'type' 'tabular' 'x' 1 'y' 1 'w' 6 'h' 8
