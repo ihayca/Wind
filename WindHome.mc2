@@ -1,12 +1,16 @@
-// @endpoint http://172.20.13.163:8888/api/v0/exec
-// @theme light
+// @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
+// @theme dark-blue
 {
   //'type' 'flex'
+  'title' 'Wind Home'
   'cellHeight' 100
   'options' { 
       'scheme' 'WARP10'
-      'timeZone' 'AUTO'
-      'showErrors' true      
+      'timeZone' 'Europe/Istanbul'
+      'showErrors' true
+      'showLoader' true
+      
+            
          }
 
 //variables		 
@@ -16,7 +20,7 @@
           'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
 	  'startDate' NOW 
           'endDate' 604800000000
-          'capacity_max' 234
+          'capacity_max' 246
           'totActPow' 100
           }
 
@@ -28,12 +32,12 @@
  {  
     'title' 'Active Generation'   
     'options' { 'autoRefresh' 60
-                'eventHandler' 'type=variable,tag=(TurbineId,plant,startDate,endDate)'
+                'eventHandler' 'type=variable,tag=(TurbineId|plant|startDate|endDate)'
 				'maxValue' 100
 		'unit' 'MWh'
 				}
     'x' 0 'y' 0 'w' 3 'h' 1
-    'type' 'display' 	
+    'type' 'hidden' 	
     'macro' <%    
     [ $myreadtoken '~ACTIVE_POWER.*' {  } 
       // $start $end 
@@ -57,16 +61,22 @@ $edata VALUES 0 GET 0 GET TODOUBLE 1000 / 'totActPow' STORE
 
 //calculate Capacity factor
 //find number of different vendors
-6000 11 * 'goldwind_max' STORE
-3450 15 * 'vestas_max' STORE 
-1520 77 * 'sinovel_max' STORE
+[ $myreadtoken '~.*' { 'plant' 'Usak' 'manufacturer' 'Sinovel' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'ussn' STORE
+[ $myreadtoken '~.*' { 'plant' 'Usak' 'manufacturer' 'Goldwind' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'usgw' STORE
+[ $myreadtoken '~.*' { 'plant' 'Soke' 'manufacturer' 'Vestas' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'skvs' STORE
+[ $myreadtoken '~.*' { 'plant' 'Soke' 'manufacturer' 'Goldwind' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'skgw' STORE
+[ $myreadtoken '~.*' { 'plant' 'Yalova' 'manufacturer' 'Sinovel' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'ylsn' STORE
+
+6000 $skgw $usgw + * 'goldwind_max' STORE
+3450 $skvs * 'vestas_max' STORE 
+1520 $ylsn $ussn + * 'sinovel_max' STORE
 $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
 //$capacity_max
  { 
   'data' $genEnergy
    'globalParams' { 
-    'bgColor' 'DodgerBlue'
-    'fontColor' '#ffffff'
+    //'bgColor' 'DodgerBlue'
+    // 'fontColor' '#ffffff'
  }
    'events' [
     { 'type' 'variable' 'tags' [ 'totActPow' ] 'value' { 'totActPow' $totActPow } }
@@ -83,19 +93,19 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
     'options' { 'autoRefresh' 60
                 'eventHandler' 'type=variable,tag=(capacity_max|totActPow)'
 		'unit' 'MW'
-    'description' '234'
+    'description' '246'
 				}
-    'x' 0 'y' 1 'w' 3 'h' 3
+    'x' 0 'y' 0 'w' 3 'h' 3
     'type' 'circle' 	
     'macro' <%    
 
 
  { 
-  'data' $totActPow 
+  'data' $totActPow 100 * RINT 100 / 
    'globalParams' { 
     'display' { 'decimals' 2 }
-    'bgColor' 'Turquoise'
-    'fontColor' '#ffffff'
+    // 'bgColor' 'Turquoise'
+    // 'fontColor' '#ffffff'
 
  }
      'params' [
@@ -103,7 +113,7 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
       'maxValue' $capacity_max
       'datasetColor'
         <% $totActPow 50 < %> <% 'Red' %>
-        <% $totActPow 120 < %> <% 'Orange' %>
+        <% $totActPow 75 < %> <% 'Orange' %>
         <% 'Green' %> 2 SWITCH
     }
   ]
@@ -127,8 +137,8 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
   'data' $capacity_max 
    'globalParams' { 
     'display' { 'decimals' 2 }
-    'bgColor' 'Salmon'
-    'fontColor' '#ffffff'
+    // 'bgColor' 'Salmon'
+    // 'fontColor' '#ffffff'
 
  }
  }
@@ -138,7 +148,7 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
 
     // Time Availability YTD   
     {  
-    'title' 'Availability'   
+    'title' 'Availability Today'   
     'options' { 'autoRefresh' 60
                 'eventHandler' 'type=variable,tag=TurbineId,plant,startDate,endDate'
 		'maxValue' 100
@@ -148,62 +158,54 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
     'unit' 'pct' 	
     'macro' <% 
 
+      NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+
        [ $myreadtoken 'PLC_STATUS' {  } 
       // $start $end 
-      NOW '2023-12-10T00:00:00.000Z' TOTIMESTAMP //will be changed after usak reconnects
+      //NOW '2023-12-10T00:00:00.000Z' TOTIMESTAMP //will be changed after usak reconnects
+      NOW 2 d
             ] FETCH 'data' STORE
 	   $data { '.app' '' '.uuid' '' 'type' '' } RELABEL 'data' STORE //relabel the atributes
      NOW  "lastBucket" STORE
-     10 m "bucketSpan" STORE // 1 minute
-     '2023-12-10T00:00:00.000Z' TOTIMESTAMP "start" STORE // count = ((end - start) / bucketspan) + 1
-     //NOW 2 d - "start" STORE // count = ((end - start) / bucketspan) + 1
+     1 m "bucketSpan" STORE // 1 minute
+     //'2023-12-10T00:00:00.000Z' TOTIMESTAMP "start" STORE // count = ((end - start) / bucketspan) + 1
+     NOW 2 d - "start" STORE // count = ((end - start) / bucketspan) + 1
      $lastBucket $start - $bucketSpan / TOLONG 1 + "bucketCount" STORE
      [ $data bucketizer.last $lastBucket $bucketSpan $bucketCount ] BUCKETIZE FILLPREVIOUS FILLNEXT 'bucket' STORE
+     $bucket NOW $today TIMECLIP 'bucket' STORE //take last 24 hours
     
-    0.0 'soke_avail' STORE
-    [ $bucket  []  { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER 
-    <% 'i' STORE 
-      $i SIZE 'total' STORE
-    [ $i 2 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'pause' STORE
-     [ $i 3 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'run' STORE
-     $pause TODOUBLE $run TODOUBLE + $total TODOUBLE /  100 * $soke_avail + 'soke_avail' STORE
-    %> FOREACH 
-    $soke_avail 15 / 'soke' STORE
+     [ $bucket  []  { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER VALUES FLATTEN  'vslist' STORE
+     $vslist SIZE 'total_vs' STORE
+     $vslist <% DROP 2 == %> LFILTER SIZE 'pause' STORE 
+     $vslist <% DROP 3 == %> LFILTER SIZE 'run' STORE
+     $run TODOUBLE $pause TODOUBLE + $total_vs TODOUBLE / 100 * 'soke' STORE
 
-     0.0 'yalova_avail' STORE
-    [ $bucket  []  { 'manufacturer' 'Sinovel' 'plant' 'Yalova' } filter.bylabels ] FILTER 
-    <% 'i' STORE 
-      $i SIZE 'total' STORE
-     [ $i 1 mapper.eq 0 0 0 ] MAP 'Standby' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'standby' STORE
-     [ $i 2 mapper.eq 0 0 0 ] MAP 'Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'production' STORE
-     $standby TODOUBLE $production TODOUBLE + $total TODOUBLE /  100 * $yalova_avail + 'yalova_avail' STORE
-    %> FOREACH 
-    $yalova_avail 36 / 'yalova' STORE
+    [ $bucket  []  { 'manufacturer' 'Sinovel' 'plant' 'Yalova' } filter.bylabels ] FILTER VALUES FLATTEN  'ylvlist' STORE
+     $ylvlist SIZE 'total_ylv' STORE
+     $ylvlist <% DROP 1 == %> LFILTER SIZE 'standby_ylv' STORE 
+     $ylvlist <% DROP 2 == %> LFILTER SIZE 'prod_ylv' STORE
+     $prod_ylv TODOUBLE $standby_ylv TODOUBLE + $total_ylv TODOUBLE / 100 * 'yalova' STORE
 
-     0.0 'usak_avail_sn' STORE
-    [ $bucket  []  { 'manufacturer' 'Sinovel' 'plant' 'Usak' } filter.bylabels ] FILTER 
-    <% 'i' STORE 
-      $i SIZE 'total' STORE
-     [ $i 1 mapper.eq 0 0 0 ] MAP 'Standby' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'standby' STORE
-     [ $i 2 mapper.eq 0 0 0 ] MAP 'Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'production' STORE
-     $standby TODOUBLE $production TODOUBLE + $total TODOUBLE /  100 * $usak_avail_sn + 'usak_avail_sn' STORE
-    %> FOREACH 
-    //$usak_avail_sn 41 / 'usak_sn' STORE
+    [ $bucket  []  { 'manufacturer' 'Sinovel' 'plant' 'Usak' } filter.bylabels ] FILTER VALUES FLATTEN  'usksnlist' STORE
+     $usksnlist SIZE 'total_usksn' STORE
+     $usksnlist <% DROP 1 == %> LFILTER SIZE 'standby_usksn' STORE 
+     $usksnlist <% DROP 2 == %> LFILTER SIZE 'prod_usksn' STORE
+     $prod_usksn TODOUBLE $standby_usksn TODOUBLE + $total_usksn TODOUBLE / 100 * 'usak_sn' STORE
 
-     0.0 'usak_avail_gw' STORE
-     [ $bucket  []  { 'manufacturer' 'Goldwind' 'plant' 'Usak' } filter.bylabels ] FILTER 
-    <% 'i' STORE 
-      $i SIZE 'total' STORE
-     [ $i 2 mapper.eq 0 0 0 ] MAP 'Standstill' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'standstill' STORE
-     [ $i 4 mapper.eq 0 0 0 ] MAP 'Run Up' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'run' STORE
-     [ $i 5 mapper.eq 0 0 0 ] MAP 'Power Production' RENAME { 'TurbineId' '' 'type' '' 'plant' '' } RELABEL 10 m  1 'split' TIMESPLIT FLATTEN RANGECOMPACT SIZE 'power' STORE
-   
-     $standstill TODOUBLE  $run TODOUBLE + $power TODOUBLE + $total TODOUBLE /  100 * $usak_avail_gw + 'usak_avail_gw' STORE
-    %> FOREACH 
+     [ $bucket  []  { 'manufacturer' 'Goldwind' 'plant' 'Usak' } filter.bylabels ] FILTER VALUES FLATTEN  'uskgwlist' STORE
+    $uskgwlist SIZE 'total_uskgw' STORE
+     $uskgwlist <% DROP 2 == %> LFILTER SIZE 'standby_uskgw' STORE 
+     $uskgwlist <% DROP 3 == %> LFILTER SIZE 'start_uskgw' STORE 
+     $uskgwlist <% DROP 4 == %> LFILTER SIZE 'run_uskgw' STORE
+     $uskgwlist <% DROP 5 == %> LFILTER SIZE 'prod_uskgw' STORE
+     $run_uskgw TODOUBLE $standby_uskgw TODOUBLE + $start_uskgw TODOUBLE + $prod_uskgw TODOUBLE + $total_uskgw TODOUBLE / 100 * 'usak_gw' STORE
 
-    $usak_avail_gw 11 /  'usak_gw' STORE
-
-    $usak_gw $yalova + $soke + 3 / 'availability' STORE 
+    $usak_gw  $usak_sn + $yalova + $soke + 4 / 'availability' STORE // $usak_gw  $usak_sn + $yalova + $soke + 3 /
 
     <'
       %.2f
@@ -214,8 +216,8 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
   'data' $availability
    'globalParams' { 
     'display' { 'decimals' 2 }
-    'bgColor' 'Khaki'
-    'fontColor' '#000000'
+    // 'bgColor' 'Khaki'
+    //'fontColor' '#000000'
 
  }
  }
@@ -225,17 +227,34 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
 
       // Capacity Factor  
     {  
-    'title' 'Capacity Factor'   
+    'title' 'Capacity Factor Today'   
     'options' { 'autoRefresh' 60
                 'eventHandler' 'type=variable,tag=(capacity_max|totActPow)'
 		'maxValue' 100
 				}
-    'x' 0 'y' 6 'w' 3 'h' 1 
+    'x' 0 'y' 3 'w' 3 'h' 1 
     'type' 'display'
     'unit' 'pct' 	
     'macro' <%  
 
-      $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE
+       NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+
+     [ $myreadtoken '~ACTIVE_POWER.*' {  } 
+      // $start $end 
+      NOW ISO8601 $today
+      ] FETCH 'data' STORE
+	   $data { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'data' STORE //relabel the atributes
+     [ $data bucketizer.last 0 10 m 0 ] BUCKETIZE 'etrenddata' STORE // sum of each turbine seperately and aligned
+     [ $etrenddata [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE 'etrenddata' STORE  
+      $etrenddata VALUES 0 GET 0 GET TODOUBLE 1000 / 6 / 'total' STORE
+
+     // $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE //old calculation for last 10 mins
+     $total $capacity_max $hour * / TODOUBLE 100 * 'cf' STORE
 
       <'
         %.2f
@@ -246,8 +265,8 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
   'data' $cf
    'globalParams' { 
     'display' { 'decimals' 2 }
-    'bgColor' 'PowderBlue'
-    'fontColor' '#000000'
+    // 'bgColor' 'PowderBlue'
+    // 'fontColor' '#000000'
 
  }
  }  
@@ -270,7 +289,7 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
       $now_stamp 0 GET 'year' STORE // year now
       $now_stamp 1 GET 'month' STORE // value of this month
       $now_stamp 2 GET 'day' STORE // value of today
-      [ $year $month $day 00 00 00 ]  TSELEMENTS-> ISO8601 'today' STORE
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust UTC to Turkey
 
      [ $myreadtoken '~ACTIVE_POWER.*' {  } 
       // $start $end 
@@ -289,8 +308,8 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
   'data' $total
    'globalParams' { 
     'display' { 'decimals' 2 }
-    'bgColor' 'MediumSeaGreen'
-    'fontColor' '#ffffff'
+    // 'bgColor' 'MediumSeaGreen'
+    // 'fontColor' '#ffffff'
 
  }
  }
@@ -303,6 +322,8 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
     'options' { 'autoRefresh' 60
                 'eventHandler' 'type=variable,tag=TurbineId,plant,startDate,endDate'
 				'maxValue' 100
+                'showLegend' true
+
 				}
     'x' 3 'y' 1 'w' 3 'h' 2
     'type' 'bar' 	
@@ -311,46 +332,251 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
       // $start $end 
       NOW 1 d
       ] FETCH 'data' STORE
-	   $data { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'data' STORE //relabel the atributes
-     [ $data bucketizer.last 0 10 m 0 ] BUCKETIZE 'etrenddata' STORE // sum of each turbine seperately and aligned
-     [ $etrenddata [] reducer.sum ] REDUCE 'etrenddata' STORE  
-     $etrenddata 0 GET 1000 / 
-
+	   $data { '.app' '' '.uuid' '' 'type' '' 'manufacturer' '' } RELABEL 'MWh' RENAME 'data' STORE //relabel the atributes
+     [ $data bucketizer.last 0 1 h 0 ] BUCKETIZE 'etrenddata' STORE // sum of each turbine seperately and aligned
+     [ $etrenddata [ 'plant' ] reducer.sum ] REDUCE 'etrenddata' STORE  
+     
+ $etrenddata <% 1000 / %> FOREACH  STACKTOLIST 'values' STORE
+{ 
+  'data' $values
+  'globalParams' { 
+    'bar' { 'stacked' true  'horizontal' false  }
+  }
+}
     %>
     }
 
     //active powers last 24 hrs
    {  
-    'title' 'Active Powers Last 24hr'   
-    'options' { 'autoRefresh' 60
-                'eventHandler' 'type=variable,tag=TurbineId,plant,startDate,endDate'
+    'title' 'Month Capacity Factors'   
+    'options' { 'autoRefresh' 3600
+                //'eventHandler' 'type=variable,tag=TurbineId,plant,startDate,endDate'
 				'maxValue' 100
         'showLegend' true
 				}
     'x' 3 'y' 3 'w' 3 'h' 2
-    'type' 'line' 	
+    'type' 'bar' 	
     'macro' <%    
-     [ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Yalova' } 
-         NOW 1 d
-      ] FETCH 'ydata' STORE
-	   $ydata { '.app' '' '.uuid' '' 'manufacturer' '' 'type' '' 'plant' '' } RELABEL 'Yalova' RENAME 'ydata' STORE //relabel the atributes
-     [ $ydata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE 'ydata' STORE
 
-     [ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Soke' } 
-         NOW 1 d
-      ] FETCH 'sdata' STORE
-	   $sdata { '.app' '' '.uuid' '' 'manufacturer' '' 'type' '' 'plant' '' } RELABEL 'Soke' RENAME 'sdata' STORE //relabel the atributes
-     [ $sdata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE 'sdata' STORE
+      NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year $month 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thismonth' STORE //adjust 3 hrs for UTC time Turkey
+      $day 1 - 24 * $hour + 'total_hours' STORE
+      $year 1 - 'last_year' STORE
+      [ $last_year $month 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearthismonthbegin' STORE //adjust 3 hrs for UTC time Turkey
+      $lastyearthismonthbegin  TOTIMESTAMP 30 d + 'lastyearthismonthend' STORE //adjust 3 hrs for UTC time Turkey
 
-     [ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Usak' } 
-         NOW 1 d
-      ] FETCH 'udata' STORE
-	   $udata { '.app' '' '.uuid' '' 'manufacturer' '' 'type' '' 'plant' '' } RELABEL 'Usak' RENAME 'udata' STORE //relabel the atributes
-     [ $udata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE 'udata' STORE
-      
-      $udata
-      $sdata
-      $ydata
+     
+  // SOKE this month
+     //[ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Soke' } 
+      // $start $end 
+      //NOW ISO8601 $thismonth
+      //] FETCH 
+       { 'token' $myreadtoken 
+      'class' 'ACTIVE_POWER' 
+      'labels' { 'plant' 'Soke' } 
+      'start' $thismonth
+      'end' NOW ISO8601 
+      //'sample' 0.5
+      'timestep' 10 m
+      } FETCH 'data' STORE
+	   $data { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'data' STORE //relabel the atributes
+     [ $data bucketizer.last 0 10 m 0 ] BUCKETIZE 'etrenddata' STORE // sum of each turbine seperately and aligned
+
+     [ $etrenddata [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER SIZE 'sksn' STORE  // find number of turbines of that month
+     [ $etrenddata [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER SIZE 'skvs' STORE
+     [ $etrenddata [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER SIZE 'skgw' STORE 
+
+     [ $etrenddata [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE 'etrenddata' STORE  
+      $etrenddata VALUES 0 GET 0 GET TODOUBLE 1000 / 6 / 'total' STORE  //change to Mwh
+     
+     // calculate capacity of the plant 
+     1500 $sksn * 1000 /
+     3450 $skvs * 1000 / + 
+     6000 $skgw * 1000 / + 'capacity_max_sk_new' STORE
+     // $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE //old calculation for last 10 mins
+     $total $capacity_max_sk_new $total_hours * / TODOUBLE 100 * 100 * RINT 100 / 'soke_this_month' STORE 
+
+   // SOKE last year this month
+    // [ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Soke' } 
+      // $start $end 
+    //  $lastyearthismonthend 30 d
+    //  ] 
+       { 'token' $myreadtoken 
+      'class' 'ACTIVE_POWER' 
+      'labels' { 'plant' 'Soke' } 
+      'start' $lastyearthismonthbegin
+      'end' $lastyearthismonthend
+      //'sample' 0.5
+      'timestep' 10 m
+      } FETCH 'ldata' STORE
+	   $ldata { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'ldata' STORE //relabel the atributes
+     [ $ldata bucketizer.last 0 10 m 0 ] BUCKETIZE 'letrenddata' STORE // sum of each turbine seperately and aligned
+
+     [ $letrenddata [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER SIZE 'lsksn' STORE  // find number of turbines of that month
+     [ $letrenddata [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER SIZE 'lskvs' STORE
+     [ $letrenddata [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER SIZE 'lskgw' STORE 
+
+     <% $letrenddata [] == %> <% 0 'ltotal' STORE %>
+     <%  [ $letrenddata [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE 'letrenddata' STORE  
+      $letrenddata VALUES 0 GET 0 GET TODOUBLE 1000 / 6 / 'ltotal' STORE  //change to Mwh
+       %> IFTE 
+    
+     
+     // calculate capacity of the plant 
+     1500 $sksn * 1000 /
+     3450 $skvs * 1000 / + 
+     6000 $skgw * 1000 / + 'capacity_max_sk_old' STORE
+     // $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE //old calculation for last 10 mins
+     30 24 * 'month_hours' STORE
+     $ltotal $capacity_max_sk_old $month_hours * / TODOUBLE 100 * 100 * RINT 100 / 'soke_this_month_old' STORE 
+
+      // YALOVA this month
+     //[ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Yalova' } 
+      // $start $end 
+      //NOW ISO8601 $thismonth
+     // ] 
+       { 'token' $myreadtoken 
+      'class' 'ACTIVE_POWER' 
+      'labels' { 'plant' 'Yalova' } 
+      'start' $thismonth
+      'end' NOW ISO8601 
+      //'sample' 0.5
+      'timestep' 10 m
+      }  FETCH 'data' STORE
+	   $data { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'data' STORE //relabel the atributes
+     [ $data bucketizer.last 0 10 m 0 ] BUCKETIZE 'etrenddata' STORE // sum of each turbine seperately and aligned
+
+     [ $etrenddata [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER SIZE 'sksn' STORE  // find number of turbines of that month
+     [ $etrenddata [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER SIZE 'skvs' STORE
+     [ $etrenddata [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER SIZE 'skgw' STORE 
+
+     [ $etrenddata [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE 'etrenddata' STORE  
+      $etrenddata VALUES 0 GET 0 GET TODOUBLE 1000 / 6 / 'total' STORE  //change to Mwh
+     
+     // calculate capacity of the plant 
+     1500 $sksn * 1000 /
+     3450 $skvs * 1000 / + 
+     6000 $skgw * 1000 / + 'capacity_max_sk_new' STORE
+     // $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE //old calculation for last 10 mins
+     $total $capacity_max_sk_new $total_hours * / TODOUBLE 100 * 100 * RINT 100 / 'yalova_this_month' STORE 
+
+   // Yalova last year this month
+    // [ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Yalova' } 
+      // $start $end 
+      //$lastyearthismonthend 30 d
+     // ] 
+       { 'token' $myreadtoken 
+      'class' 'ACTIVE_POWER' 
+      'labels' { 'plant' 'Yalova' } 
+      'start' $lastyearthismonthbegin
+      'end' $lastyearthismonthend
+      //'sample' 0.5
+      'timestep' 10 m
+      } FETCH 'ldata' STORE
+	   $ldata { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'ldata' STORE //relabel the atributes
+     [ $ldata bucketizer.last 0 10 m 0 ] BUCKETIZE 'letrenddata' STORE // sum of each turbine seperately and aligned
+
+     [ $letrenddata [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER SIZE 'lsksn' STORE  // find number of turbines of that month
+     [ $letrenddata [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER SIZE 'lskvs' STORE
+     [ $letrenddata [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER SIZE 'lskgw' STORE 
+
+     <% $letrenddata [] == %> <% 0 'ltotal' STORE %>
+     <%  [ $letrenddata [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE 'letrenddata' STORE  
+      $letrenddata VALUES 0 GET 0 GET TODOUBLE 1000 / 6 / 'ltotal' STORE  //change to Mwh
+       %> IFTE 
+    
+     
+     // calculate capacity of the plant 
+     1500 $sksn * 1000 /
+     3450 $skvs * 1000 / + 
+     6000 $skgw * 1000 / + 'capacity_max_sk_old' STORE
+     // $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE //old calculation for last 10 mins
+     30 24 * 'month_hours' STORE
+     $ltotal $capacity_max_sk_old $month_hours * / TODOUBLE 100 * 100 * RINT 100 / 'yalova_this_month_old' STORE 
+
+      // USAK this month
+     //[ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Usak' } 
+      // $start $end 
+      //NOW ISO8601 $thismonth
+      //] 
+       { 'token' $myreadtoken 
+      'class' 'ACTIVE_POWER' 
+      'labels' { 'plant' 'Usak' } 
+      'start' $thismonth
+      'end' NOW ISO8601 
+      //'sample' 0.5
+      'timestep' 10 m
+      }  FETCH 'data' STORE
+	   $data { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'data' STORE //relabel the atributes
+     [ $data bucketizer.last 0 10 m 0 ] BUCKETIZE 'etrenddata' STORE // sum of each turbine seperately and aligned
+
+     [ $etrenddata [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER SIZE 'sksn' STORE  // find number of turbines of that month
+     [ $etrenddata [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER SIZE 'skvs' STORE
+     [ $etrenddata [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER SIZE 'skgw' STORE 
+
+     [ $etrenddata [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE 'etrenddata' STORE  
+      $etrenddata VALUES 0 GET 0 GET TODOUBLE 1000 / 6 / 'total' STORE  //change to Mwh
+     
+     // calculate capacity of the plant 
+     1500 $sksn * 1000 /
+     3450 $skvs * 1000 / + 
+     6000 $skgw * 1000 / + 'capacity_max_sk_new' STORE
+     // $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE //old calculation for last 10 mins
+     $total $capacity_max_sk_new $total_hours * / TODOUBLE 100 * 100 * RINT 100 / 'usak_this_month' STORE 
+
+   // USAK last year this month
+    // [ $myreadtoken '~ACTIVE_POWER.*' { 'plant' 'Usak' } 
+      // $start $end 
+     // $lastyearthismonthend 30 d
+     // ] 
+     
+       { 'token' $myreadtoken 
+      'class' 'ACTIVE_POWER' 
+      'labels' { 'plant' 'Usak' } 
+      'start' $lastyearthismonthbegin
+      'end' $lastyearthismonthend
+      //'sample' 0.5
+      'timestep' 10 m
+      } FETCH 'ldata' STORE
+	   $ldata { '.app' '' '.uuid' '' 'type' '' } RELABEL 'MWh' RENAME 'ldata' STORE //relabel the atributes
+     [ $ldata bucketizer.last 0 10 m 0 ] BUCKETIZE 'letrenddata' STORE // sum of each turbine seperately and aligned
+
+     [ $letrenddata [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER SIZE 'lsksn' STORE  // find number of turbines of that month
+     [ $letrenddata [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER SIZE 'lskvs' STORE
+     [ $letrenddata [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER SIZE 'lskgw' STORE 
+
+     <% $letrenddata [] == %> <% 0 'ltotal' STORE %>
+     <%  [ $letrenddata [] reducer.sum ] REDUCE [ SWAP bucketizer.sum 0 0 1 ] BUCKETIZE 'letrenddata' STORE  
+      $letrenddata VALUES 0 GET 0 GET TODOUBLE 1000 / 6 / 'ltotal' STORE  //change to Mwh
+       %> IFTE 
+    
+     
+     // calculate capacity of the plant 
+     1500 $sksn * 1000 /
+     3450 $skvs * 1000 / + 
+     6000 $skgw * 1000 / + 'capacity_max_sk_old' STORE
+     // $totActPow $capacity_max / TODOUBLE 100 * 'cf' STORE //old calculation for last 10 mins
+     30 24 * 'month_hours' STORE
+     $ltotal $capacity_max_sk_old $month_hours * / TODOUBLE 100 * 100 * RINT 100 / 'usak_this_month_old' STORE 
+
+
+    {
+  'columns' [ 'This Year' 'Last Year' ]
+  'rows' [
+    [ 'Söke' $soke_this_month  $soke_this_month_old ]
+    [ 'Yalova'  $yalova_this_month  $yalova_this_month_old  ]
+    [ 'Uşak'  $usak_this_month  $usak_this_month_old  ]
+  ]
+     } 'values' STORE
+    { 
+  'data' $values
+    }
+
 
     %>
     }
@@ -371,23 +597,23 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
          NOW 1 d
       ] FETCH 'ydata' STORE
 	   $ydata { '.app' '' '.uuid' '' 'manufacturer' '' 'type' '' 'plant' '' } RELABEL 'Yalova' RENAME 'ydata' STORE //relabel the atributes
-     [ $ydata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE 'ydata' STORE
+     [ $ydata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean.exclude-nulls ] REDUCE 'ydata' STORE
      
      [ $myreadtoken '~WIND_SPEED.*' { 'plant' 'Soke' } 
          NOW 1 d
       ] FETCH 'sdata' STORE
 	   $sdata { '.app' '' '.uuid' '' 'manufacturer' '' 'type' '' 'plant' '' } RELABEL 'Soke' RENAME 'sdata' STORE //relabel the atributes
-     [ $sdata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE 'sdata' STORE
+     [ $sdata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean.exclude-nulls ] REDUCE 'sdata' STORE
 
      [ $myreadtoken '~WIND_SPEED.*' { 'plant' 'Usak' } 
          NOW 1 d
       ] FETCH 'udata' STORE
 	   $udata { '.app' '' '.uuid' '' 'manufacturer' '' 'type' '' 'plant' '' } RELABEL 'Usak' RENAME 'udata' STORE //relabel the atributes
-     [ $udata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE 'udata' STORE
+     [ $udata bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean.exclude-nulls ] REDUCE 'udata' STORE
       
-      $udata
-      $sdata
-      $ydata
+      $udata 0 GET 100.0 * RINT 100.0 /  
+      $sdata 0 GET 100.0 * RINT 100.0 / 
+      $ydata 0 GET 100.0 * RINT 100.0 / 
 
     %>
     }
@@ -440,17 +666,17 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
  1 SWITCH 
 
 <'
-%.2f
+%.0f
 '> 
 [ $usak TODOUBLE ] STRINGFORMAT 'usak_pwr' STORE
 
 <'
-%.2f
+%.0f
 '> 
 [ $yalova TODOUBLE ] STRINGFORMAT 'yalova_pwr' STORE
 
 <'
-%.2f
+%.0f
 '> 
 [ $soke TODOUBLE ] STRINGFORMAT 'soke_pwr' STORE
 
@@ -475,7 +701,7 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
         NOW 10 m
       ] FETCH 'data' STORE
 	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
-     <% $data [] == %> <% -1 'soke_avg_wind' STORE %>
+     <% $data [] == %> <% -1 'usak_avg_wind' STORE %>
      <% [ $data bucketizer.last NOW MAXLONG d 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'usak_avg_wind' STORE
      %> IFTE
 <'
@@ -497,41 +723,74 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
     [ $myreadtoken '~.*' { 'plant' 'Soke' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'total_turbines_Soke' STORE
     [ $myreadtoken '~.*' { 'plant' 'Yalova' } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET SIZE 'total_turbines_Yalova' STORE
      
-      [ $myreadtoken '~(GW_NUMBER_OF_AVAILABLE_TURBIN|SN_NUMBER_OF_AVAILABLE_TURBIN).*' { 'plant' 'Usak' } 
+     /* [ $myreadtoken '~(GW_NUMBER_OF_AVAILABLE_TURBIN).*' { 'plant' 'Usak' } 
         // $startDate TOSTRING 
 	      // $endDate TOSTRING
         NOW -1
       ] FETCH 'avail_usak' STORE
-         [ $avail_usak bucketizer.last NOW 1 d 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'in_production_Usak' STORE
+         [ $avail_usak bucketizer.last NOW 1 d 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'in_production_Usak_gw' STORE
+       // will be used in the future when in prod signal is correct */
 
-        [ $myreadtoken '~(NumberOfAvailableGen).*' { 'plant' 'Yalova' } 
+        [ $myreadtoken 'PLC_STATUS' { 'plant' 'Usak' 'manufacturer' 'Goldwind' } 
+        // $startDate TOSTRING 
+	      // $endDate TOSTRING
+        NOW -1
+      ] FETCH 'avail_usak_gw' STORE
+       [ $avail_usak_gw [] 4 filter.any.eq ] FILTER SIZE 'in_production_Usak_gw_1' STORE
+       [ $avail_usak_gw [] 5 filter.any.eq ] FILTER SIZE 'in_production_Usak_gw_2' STORE
+
+
+      [ $myreadtoken 'PLC_STATUS' { 'plant' 'Usak' 'manufacturer' 'Sinovel' } 
+        // $startDate TOSTRING 
+	      // $endDate TOSTRING
+        NOW -1
+      ] FETCH 'avail_usak_sn' STORE
+       [ $avail_usak_sn [] 2 filter.any.eq ] FILTER SIZE 'in_production_Usak_sn' STORE
+
+       $in_production_Usak_sn $in_production_Usak_gw_1 + $in_production_Usak_gw_2 + 'in_production_Usak' STORE
+
+        [ $myreadtoken 'PLC_STATUS' { 'plant' 'Yalova' } 
         // $startDate TOSTRING 
 	      // $endDate TOSTRING
         NOW -1
       ] FETCH 'avail_yalova' STORE
-         [ $avail_yalova bucketizer.last NOW 1 d 0 ] BUCKETIZE [ SWAP [] reducer.sum ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'in_production_Yalova' STORE
+     
+     [ $avail_yalova [] 2 filter.any.eq ] FILTER SIZE 'in_production_Yalova' STORE
 
-      [ $myreadtoken '~(PLC_STATUS).*' { 'plant' 'Soke' } 
+      [ $myreadtoken 'PLC_STATUS' { 'plant' 'Soke' 'manufacturer' 'Vestas' } 
         // $startDate TOSTRING 
 	      // $endDate TOSTRING
         NOW -1
       ] FETCH 'avail_soke' STORE
-       [ $avail_soke [] 3 filter.any.eq ] FILTER SIZE 'in_production_Soke' STORE
+       [ $avail_soke [] 3 filter.any.eq ] FILTER SIZE 'in_production_Soke_vs' STORE
+
+           [ $myreadtoken 'PLC_STATUS' { 'plant' 'Soke' 'manufacturer' 'Goldwind' } 
+        // $startDate TOSTRING 
+	      // $endDate TOSTRING
+        NOW -1
+      ] FETCH 'avail_soke_gw' STORE
+        [ $avail_soke_gw [] 4 filter.any.eq ] FILTER SIZE 'in_production_soke_gw_1' STORE
+       [ $avail_soke_gw [] 5 filter.any.eq ] FILTER SIZE 'in_production_soke_gw_2' STORE
+
+       $in_production_soke_gw_1 $in_production_soke_gw_2 + $in_production_Soke_vs + 'in_production_Soke' STORE
+
+       
 
         {
           'columns' [ 'Site' 'Active Power(kW)' 'Avg. Wind(m/s)' 'Turbines in Production' 'Total Turbines' ]
           'rows' [
-  [ 'Uşak' $usak_pwr $usak_wnd $in_production_Usak TOSTRING $total_turbines_Usak TOSTRING ]
-  [ 'Söke' $soke_pwr $soke_wnd $in_production_Soke TOSTRING $total_turbines_Soke TOSTRING ]
-  [ 'Yalova' $yalova_pwr $yalova_wnd $in_production_Yalova TOSTRING $total_turbines_Yalova TOSTRING ]
+  [ '<' 'a href="https://resverianaliz.aydemyenilenebilir.com.tr%2F%252FWind%252FWindSites.mc2%3Fplant%3DUsak" referrerpolicy="same-origin">Uşak</' + 'a>' + $usak_pwr $usak_wnd $in_production_Usak TOSTRING $total_turbines_Usak TOSTRING ]
+  [ '<' 'a href="https://resverianaliz.aydemyenilenebilir.com.tr%2F%252FWind%252FWindSites.mc2%3Fplant%3DSoke" referrerpolicy="same-origin">Söke</' + 'a>' + $soke_pwr $soke_wnd $in_production_Soke TOSTRING $total_turbines_Soke TOSTRING ]
+  [ '<' 'a href="https://resverianaliz.aydemyenilenebilir.com.tr%2F%252FWind%252FWindSites.mc2%3Fplant%3DYalova" referrerpolicy="same-origin">Yalova</' + 'a>' + $yalova_pwr $yalova_wnd $in_production_Yalova TOSTRING $total_turbines_Yalova TOSTRING ]
+  //[ '<' 'a href="http%3A%2F%2F172.20.13.163%3A9090%2F%252FWind%252FWindSites.mc2%3Fplant%3DYalova" referrerpolicy="same-origin">Yalova</' + 'a>' + $yalova_pwr $yalova_wnd $in_production_Yalova TOSTRING $total_turbines_Yalova TOSTRING ]
           ]
         } 
         'values' STORE
     
         { 'data' $values 
           'globalParams' {
-            'bgColor' 'Thistle'
-            'fontColor' '#ffffff'
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
     'tabular' {
       'fixedWidth' true 
       'sortable' true 
@@ -552,7 +811,82 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
         'x' 6 'y' 2 'w' 6 'h' 5              
         'type' 'map'                
         'macro' <%  
+           [ $myreadtoken 'PLC_STATUS' { } 
+         // $startDate TOSTRING 
+	       // $endDate TOSTRING
+         NOW -1
+      ] FETCH 'data' STORE
+	  	$data { '.app' '' '.uuid' '' 'type' '' 'plant' '' } RELABEL 'data' STORE 
+     $data 0 GET LABELS 'manufacturer' GET 'manu' STORE
+     // <% $manu 'Goldwind' == %> <% 
+          [ $data [] { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER 'gwdata' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 0 filter.any.eq ] FILTER  'init' RENAME { 'Status' 'Initialization' } RELABEL  'gwinit' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 1 filter.any.eq ] FILTER  'stop' RENAME { 'Status' 'Stop' } RELABEL  'gwstop' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 2 filter.any.eq ] FILTER  'nowind' RENAME { 'Status' 'Standstill/NoWind' } RELABEL 'gwnowind' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 3 filter.any.eq ] FILTER  'start' RENAME { 'Status' 'Starting' } RELABEL  'gwstart' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 4 filter.any.eq ] FILTER  'runup' RENAME { 'Status' 'Run Up' } RELABEL  'gwrunup' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 5 filter.any.eq ] FILTER  'powprod' RENAME { 'Status' 'Production' } RELABEL  'gwpowprod' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 6 filter.any.eq ] FILTER  'service' RENAME { 'Status' 'Service' } RELABEL 'gwservice' STORE
+          [ $gwdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 7 filter.any.eq ] FILTER  'fault' RENAME { 'Status' 'Fault' } RELABEL 'gwfault' STORE
+       // %> IFT
+       // <% $manu 'Sinovel' == %> <%
+          [ $data [] { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER 'sndata' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] -1 filter.any.eq ] FILTER  'offline' RENAME { 'Status' 'Offline' } RELABEL  'snoffline' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 0 filter.any.eq ] FILTER  'start' RENAME { 'Status' 'Start' } RELABEL  'snstart' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 1 filter.any.eq ] FILTER  'nowind' RENAME { 'Status' 'Standby/NoWind' } RELABEL  'snnowind' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 2 filter.any.eq ] FILTER  'prod' RENAME { 'Status' 'Production' } RELABEL 'snprod' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 3 filter.any.eq ] FILTER  'error' RENAME { 'Status' 'Error' } RELABEL  'snerror' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 4 filter.any.eq ] FILTER  'service' RENAME { 'Status' 'Service' } RELABEL  'snservice' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 5 filter.any.eq ] FILTER  'lowtemp' RENAME { 'Status' 'LowTemp' } RELABEL  'snlowtemp' STORE
+          [ $sndata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 6 filter.any.eq ] FILTER  'highwind' RENAME { 'Status' 'HighWind' } RELABEL  'snhighwind' STORE
 
+        //%> IFT
+        //  <% $manu 'Vestas' == %> <%
+          [ $data [] { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER 'vsdata' STORE
+          [ $vsdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 3 filter.any.eq ] FILTER  'run' RENAME { 'Status' 'Production' } RELABEL  'vsrun' STORE
+          [ $vsdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 2 filter.any.eq ] FILTER  'pause' RENAME { 'Status' 'Standby/NoWind' } RELABEL 'vspause' STORE
+          [ $vsdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 1 filter.any.eq ] FILTER  'stop' RENAME { 'Status' 'Stop' } RELABEL  'vsstop' STORE
+          [ $vsdata bucketizer.last 0 0 1 ] BUCKETIZE [ SWAP [] 4 filter.any.eq ] FILTER  'emergency' RENAME { 'Status' 'Emergency' } RELABEL  'vsemrgncy' STORE
+
+        //%> IFT 
+     // get average wind for creating heatmap  
+     //   [ $myreadtoken '~WIND_SPEED.*' { } 
+        //$startDate TOSTRING 
+	      //$endDate TOSTRING
+      //   NOW 10 m 
+      //    ] FETCH 'g' STORE
+	  //$g { '.app' '' '.uuid' '' } RELABEL 'g' STORE //relabel the atributes
+	   // [ $g bucketizer.mean 0 0 1 ] BUCKETIZE 'g' STORE
+	  //$g MERGE 'speeds' STORE
+      
+      { 
+    'data'  [ $gwinit $gwstop $gwnowind $gwstart $gwrunup $gwpowprod $gwservice $snoffline $snstart $snnowind $snprod $snerror $snservice $snlowtemp $snhighwind $vsrun $vspause $vsstop $vsemrgncy ] 
+    'params' [
+      // { 'map' { 'heatmap' true } } // for visualising speeds 
+      <%  $gwinit SIZE 0 > %> <% 0 $gwinit SIZE 1 - <% 'i' STORE {  "key" 'T-' $gwinit $i GET LABELS 'TurbineId' GET + ' - ' + $gwinit $i GET LABELS 'Status' GET + 'color' '#008000' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // green for productions 
+      <%  $gwstop SIZE 0 > %> <%  0 $gwstop SIZE 1 - <% 'i' STORE { "key" 'T-' $gwstop $i GET LABELS 'TurbineId' GET + ' - ' + $gwstop $i GET LABELS 'Status' GET + 'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
+      <%  $gwnowind SIZE 0 > %> <%  0 $gwnowind SIZE 1 - <% 'i' STORE { "key" 'T-' $gwnowind $i GET LABELS 'TurbineId' GET + ' - ' + $gwnowind $i GET LABELS 'Status' GET + 'color' '#0000FF' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // blue for standby 
+      <%  $gwstart SIZE 0 > %> <%  0 $gwstart SIZE 1 - <% 'i' STORE { "key" 'T-' $gwstart $i GET LABELS 'TurbineId' GET + ' - ' + $gwstart $i GET LABELS 'Status' GET + 'color' '#008000' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // green for productions
+      <%  $gwrunup SIZE 0 > %> <%  0 $gwrunup SIZE 1 - <% 'i' STORE { "key" 'T-' $gwrunup $i GET LABELS 'TurbineId' GET + ' - ' + $gwrunup $i GET LABELS 'Status' GET + 'color' '#008000' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // green for productions
+      <%  $gwpowprod SIZE 0 > %> <%  0 $gwpowprod SIZE 1 - <% 'i' STORE { "key" 'T-' $gwpowprod $i GET LABELS 'TurbineId' GET + ' - ' + $gwpowprod $i GET LABELS 'Status' GET + 'color' '#008000' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // green for productions
+      <%  $gwservice SIZE 0 > %> <%  0 $gwservice SIZE 1 - <% 'i' STORE { "key" 'T-' $gwservice $i GET LABELS 'TurbineId' GET + ' - ' + $gwservice $i GET LABELS 'Status' GET + 'color' '#FFFF00' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // yellow for service
+      <%  $snoffline SIZE 0 > %> <%  0 $snoffline SIZE 1 - <% 'i' STORE { "key" 'T-' $snoffline $i GET LABELS 'TurbineId' GET + ' - ' + $snoffline $i GET LABELS 'Status' GET + 'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
+      <%  $snstart SIZE 0 > %> <%  0 $snstart SIZE 1 - <% 'i' STORE { "key" 'T-' $snstart $i GET LABELS 'TurbineId' GET + ' - ' + $snstart $i GET LABELS 'Status' GET + 'color' '#008000' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // green for productions
+      <%  $snnowind SIZE 0 > %> <%  0 $snnowind SIZE 1 - <% 'i' STORE { "key" 'T-' $snnowind $i GET LABELS 'TurbineId' GET + ' - ' + $snnowind $i GET LABELS 'Status' GET + 'map' { 'iconSize' [ 28 28 ] } 'color' '#0000FF' 'render' 'marker'  } %> FOR %> IFT // blue for standby
+      <%  $snprod SIZE 0 > %> <%  0 $snprod SIZE 1 - <% 'i' STORE { "key" 'T-' $snprod $i GET LABELS 'TurbineId' GET + ' - ' + $snprod $i GET LABELS 'Status' GET + 'map' { 'iconSize' [ 28 28 ] } 'color' '#008000' 'render' 'marker'  } %> FOR %> IFT // green for productions
+      <%  $snerror SIZE 0 > %> <%  0 $snerror SIZE 1 - <% 'i' STORE { "key" 'T-' $snerror $i GET LABELS 'TurbineId' GET + ' - ' + $snerror $i GET LABELS 'Status' GET + 'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
+      <%  $snservice SIZE 0 > %> <%  0 $snservice SIZE 1 - <% 'i' STORE { "key" 'T-' $snservice $i GET LABELS 'TurbineId' GET +  ' - ' + $snservice $i GET LABELS 'Status' GET + 'color' '#FFFF00' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // yellow for service
+      <%  $snlowtemp SIZE 0 > %> <%  0 $snlowtemp SIZE 1 - <% 'i' STORE { "key" 'T-' $snlowtemp $i GET LABELS 'TurbineId' GET + ' - ' + $snlowtemp $i GET LABELS 'Status' GET + 'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
+      <%  $snhighwind SIZE 0 > %> <%  0 $snhighwind SIZE 1 - <% 'i' STORE { "key" 'T-' $snhighwind $i GET LABELS 'TurbineId' GET + ' - ' + $snhighwind $i GET LABELS 'Status' GET + 'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop       
+      <%  $vsrun SIZE 0 > %> <%  0 $vsrun SIZE 1 - <% 'i' STORE { "key" 'T-' $vsrun $i GET LABELS 'TurbineId' GET + ' - ' + $vsrun $i GET LABELS 'Status' GET + 'color' '#008000' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
+      <%  $vspause SIZE 0 > %> <%  0 $vspause SIZE 1 - <% 'i' STORE { "key" 'T-' $vspause $i GET LABELS 'TurbineId' GET +  ' - ' + $vspause $i GET LABELS 'Status' GET + 'color' '#0000FF' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // yellow for service
+      <%  $vsstop SIZE 0 > %> <%  0 $vsstop SIZE 1 - <% 'i' STORE { "key" 'T-' $vsstop $i GET LABELS 'TurbineId' GET + ' - ' + $vsstop $i GET LABELS 'Status' GET + 'color' '#FFFF00' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop
+      <%  $vsemrgncy SIZE 0 > %> <%  0 $vsemrgncy SIZE 1 - <% 'i' STORE { "key" 'T-' $vsemrgncy $i GET LABELS 'TurbineId' GET + ' - ' + $vsemrgncy $i GET LABELS 'Status' GET + 'color' '#ff1030' 'render' 'marker' 'map' { 'iconSize' [ 28 28 ] } } %> FOR %> IFT // red for gw stop       
+      ]
+    'globalParams' { 'map' { 'mapType' 'SATELLITE' 'heatRadius' 25 'heatOpacity' 0.1 'track' true } } 
+      }
+
+/*   old configuration, only shows if power available
       [ $myreadtoken '~ACTIVE_POWER.*' { } 
       NOW -1
       ] FETCH 'data' STORE
@@ -570,7 +904,7 @@ $vestas_max $sinovel_max + $goldwind_max + 1000 / 'capacity_max' STORE //in MW
       ]
     'globalParams' { 'map' { 'mapType' 'SATELLITE' } } 
       }
-
+*/
         %>            
     } 
 

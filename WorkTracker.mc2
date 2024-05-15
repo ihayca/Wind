@@ -1,0 +1,229 @@
+// @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
+// @theme dark-blue
+{ 'title' 'Work Tracker'
+                  'cellHeight' 80
+                  'vars' {  
+                            'mplant' 'Yalova'
+                            'mTurbineId' '1'
+                            'mwinds' '0 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000 1050 1100 1150 1200 1250 1300 1350 1400 1450 1500 1550 1600 1650 1700 1750 1800 1850 1900 1950 2000 2050 2100 2150 2200 2250 2300 2350 2400 2450 2500'
+                            'mpowers' '0.0 4.0498878 23.628781 58.493583 112.55065 179.99284 253.35229 354.7410 458.4080 574.8670 716.3690 865.4690 1049.0700 1249.6800 1368.4700 1437.6800 1475.1500 1493.6000 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0 1500.0'
+                            'mmanufacturer' 'Manufacturer'
+                            'mmodel' 'Model'
+                            'mstatus_origin' 'Manufacturer'
+                            'mcomp_code' 'Environmental'
+                            'mstype' 'Service'
+                            'mstatus' 'Open' 
+                            'mcomment' ''
+                            'mlostpwr' 0
+                            'mstartDate' [ NOW 3 d - ISO8601 'T' SPLIT 0 GET '00:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
+                            'mendDate' NOW //1658913094000000   //604800000000
+
+                            'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+   
+                            'writetoken' 'VLMWo2sl_0j0ml.KHLpaa7lr14wLn_fAffcp.pGvv989p7MFOcyR9yF.nOrDqB2jgNR1iN93WCYav0lawYiRt0zuNWvDJhBeaVEzlGwVNBeIlRkhkv1OpUYymIiUZYMR' 
+
+  }
+                  
+                   'tiles' [   ///dashboard tile start
+       {                
+        'title' 'Plant'                
+        'x' 0 'y' 0 'w' 2 'h' 1                
+        'type' 'input:list'                
+        'macro' <%                     
+            //[ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE  
+            [ 'Usak-SN' 'Usak-GW' 'Yalova' 'Soke-VS' 'Soke-GW' ] 'listOfPlants' STORE         
+            {                        
+                'data' $listOfPlants                        
+                'globalParams' { 'input' { 'value' $mplant } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'mplant' 'mTurbineId' ] 'selector' 'mplant' }  ] // Event definition                    
+            }                
+        %>  
+		
+    } 
+     	{                
+        'title' 'Turbines'                
+        'x' 2 'y' 0 'w' 1 'h' 1            
+        'type' 'input:list' // 'input:list'  
+        'options' { 'eventHandler' 'type=(variable),tag=(mplant)'
+                     'input' { 'showButton' true 'showFilter' true } } //subscribe to plant event              
+        'macro' <%     
+             <% $mplant 'Usak-SN' CONTAINS %> <% 'Usak' 'mplant' STORE 'Sinovel' 'manufacturer' STORE %>
+             <% $mplant 'Usak-GW' CONTAINS %> <% 'Usak' 'mplant' STORE 'Goldwind' 'manufacturer' STORE %>
+             <% $mplant 'Soke-VS' CONTAINS %> <% 'Soke' 'mplant' STORE 'Vestas' 'manufacturer' STORE %>
+             <% $mplant 'Soke-GW' CONTAINS %> <% 'Soke' 'mplant' STORE 'Goldwind' 'manufacturer' STORE %>
+             <% '' 'manufacturer' STORE %> 4 SWITCH
+
+            [ $myreadtoken '~.*' { 'plant' $mplant 'manufacturer' $manufacturer } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                     
+            {                        
+                'data' $listOfTurbines                        
+                'globalParams' { 'input' { 'value' $mTurbineId } } // the initial selected value coming from global vars                        
+                'events' [ { 'type' 'variable' 'tags' [ 'mTurbineId' ] 'selector' 'mTurbineId' }  ] // Event definition                    
+            }                
+        %>            
+    } 
+
+    {                
+        'title' 'Start Date'                
+        'x' 3 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW 3 d - ISO8601 'T' SPLIT 0 GET '00:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'mstartDate' ] 'selector' 'mstartDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+	{                
+        'title' 'End  Date'                
+        'x' 5 'y' 0 'w' 2 'h' 1              
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' [ NOW ISO8601 'T' SPLIT 0 GET '23:59:59Z' ] 'T' JOIN TOTIMESTAMP                      
+                'events' [
+    { 'type' 'variable' 'tags' [ 'mendDate' ] 'selector' 'mendDate' }
+    ]                    
+            }                
+        %>            
+    }
+
+    {
+      'type' 'input:list' 'x' 7 'y' 0  'w' 2 'h' 1
+      'options' { //'eventHandler' 'type=(variable),tag=(mTurbineId|mplant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Origin'
+      'macro' <% 
+
+        [  'Manufacturer' 'Buyer' 'Environmental' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'mstatus_origin' 'type' 'variable' 'selector' 'mstatus_origin' } ]
+        'globalParams' { 'input' { 'value' $mstatus_origin 'showButton' false } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+        {
+      'type' 'input:list' 'x' 9 'y' 0  'w' 2 'h' 1
+      'options' { //'eventHandler' 'type=(variable),tag=(mTurbineId|mplant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Component'
+      'macro' <% 
+
+        [  'Environmental' 'Generator' 'Gearbox' 'Converter' 'Rotor' 'Pitch' 'Yaw' 'Electrical' 'Cooling' 'Auxilary' 'Substation' 'Kiosk' 
+        'Blade' 'Brake' 'Generator Cooling' 'Gearbox Cooling' 'CMS' 'Slipring' 'Nacelle' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'mcomp_code' 'type' 'variable' 'selector' 'mcomp_code' } ]
+        'globalParams' { 'input' { 'value' $mcomp_code 'showButton' false } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+     {
+      'type' 'input:list' 'x' 11 'y' 0  'w' 1 'h' 1
+      'options' { //'eventHandler' 'type=(variable),tag=(mTurbineId|mplant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Type'
+      'macro' <% 
+
+        [  'Service' 'Error' 'Maintenance' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'mstype' 'type' 'variable' 'selector' 'mstype' } ]
+        'globalParams' { 'input' { 'value' $mstype 'showButton' false } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+  {
+      'type' 'input:list' 'x' 0 'y' 1  'w' 1 'h' 1
+      'options' { //'eventHandler' 'type=(variable),tag=(mTurbineId|mplant)'
+                  // suscribe to events
+      
+      }
+      'title' 'Status'
+      'macro' <% 
+
+        [  'Open' 'Ongoing' 'Close' ] 'statusList' STORE
+        
+        {
+        'events' [ { 'tags' 'mstatus' 'type' 'variable' 'selector' 'mstatus' } ]
+        'globalParams' { 'input' { 'value' $mstatus 'showButton' true } } // default value
+        // when refering to a variable defined outside the tile macro and not in dashboard vars,
+        // use early binding:  !$xxx  will replace the variable by its content during the first execution.
+        'data' $statusList FLATTEN
+      } %>
+    }
+
+               {
+      'type' 'input:text'
+      'title' 'Comments'
+      'w' 11 'h' 1 'x' 1 'y' 1
+      'macro' <% { 'data' $mcomment 'events' [ { 'tags' [ 'mcomment' ] 'type' 'variable' 'selector' 'mcomment' } ] } %>
+    }
+     
+       {
+      'type' 'button'
+      'title' 'Save'
+      'options' {
+        'button' { 'label' 'Save to DB' }
+        'eventHandler' 'type=variable,tag=(mstatus_origin|mcomp_code|mstype|mplant|mTurbineId|mstarDate|mendDate|mcomment|mlostpwr)'
+      }
+      'w' 2 'h' 1 'x' 5 'y' 2
+      'macro' <% 
+         
+           
+        {            
+            'data' <%
+
+             <% $mplant 'Usak-SN' CONTAINS %> <% 'Usak' 'mplant' STORE 'Sinovel' 'manufacturer' STORE %>
+             <% $mplant 'Usak-GW' CONTAINS %> <% 'Usak' 'mplant' STORE 'Goldwind' 'manufacturer' STORE %>
+             <% $mplant 'Soke-VS' CONTAINS %> <% 'Soke' 'mplant' STORE 'Vestas' 'manufacturer' STORE %>
+             <% $mplant 'Soke-GW' CONTAINS %> <% 'Soke' 'mplant' STORE 'Goldwind' 'manufacturer' STORE %>
+             <%  %> 4 SWITCH
+
+             [ $myreadtoken 'PLC_STATUS' {  'plant' $mplant 'TurbineId' $mTurbineId } NOW -1 ] FETCH 'y' STORE // get labels for update
+              $mendDate $mstartDate - 'tduration' STORE // timestamp duration of the maintenance
+               // find difference for last plc-status and selected stardate to shift the start to selected time
+              $y $mstartDate $y LASTTICK - TIMESHIFT 'y' STORE 
+              $tduration HUMANDURATION '.' SPLIT 0 GET 'duration' STORE // human duration of the maintenance
+              $y 0 GET LOCSTRINGS 0 GET HHCODE-> 'lat' STORE 'lon' STORE //lat-lon of turbine to be updated
+              // $y 0 GET NAME '_REPORT' + 'newname' STORE 
+              'PLC_STATUS_REPORT' 'newname' STORE
+              $y { 'origin' $mstatus_origin 'component' $mcomp_code 'duration' $duration 'status' 'Service' 'service_type' $mstype 'tduration' $tduration TOSTRING 'comment' $mcomment 'lost_power' $mlostpwr TOSTRING 'kWh' + } RELABEL $newname RENAME 'new_data' STORE
+              $newname '{' + 'plant=' + $mplant ',' + 'TurbineId=' $mTurbineId + '}' + + + 'gtsselector' STORE
+              //$new_data $writetoken UPDATE // write new report
+
+              { 'data' $new_data 
+              'events' [ { 'type' 'variable' 'tags' [  'plant' ] 'value' $mplant }  ] 
+              }
+       // $maintenance $writetoken UPDATE
+        
+            %>
+
+        }
+      %>
+    }
+
+
+                   ]
+}
+

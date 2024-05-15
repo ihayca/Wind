@@ -1,7 +1,8 @@
-// @endpoint http://172.20.13.163:8888/api/v0/exec
-// @theme light
+// @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
+// @theme dark-blue
 {
   //'type' 'flex'
+  'title' 'Wind Map'
   'cellHeight' 80
   'options' { 
       'scheme' 'WARP10'
@@ -30,7 +31,7 @@
     'type' 'input:list'                
     'macro' 
      <%                     
-      [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+      [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
       {                        
         'data' $listOfPlants                        
         'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
@@ -47,7 +48,7 @@
         'macro' <%                     
                               
             {                        
-                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
+                'data' [ NOW 3 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                        
                 'events' [
     { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
     ]                    
@@ -82,11 +83,21 @@
     'type' 'display' 	
     'macro' <%    
  // calculate wind average
-    [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
+   /*  [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
         $startDate TOSTRING 
 	      $endDate TOSTRING
       //NOW 1 d
-      ] FETCH 'wind_data' STORE
+      ] */
+      { 'token' $myreadtoken 
+      'class' 'WIND_SPEED' 
+      'labels' { 'plant' $plant } 
+      'start' $startDate
+      'end' $endDate
+      //'timespan' 7 d
+      //'sample' 0.5
+      'timestep' 10 m
+      }
+      FETCH 'wind_data' STORE
    // [ $wind_data bucketizer.mean NOW MAXLONG d 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE VALUES 0 GET 0 GET 'wind_avg' STORE  //average wind
    [ $wind_data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE [ SWAP bucketizer.last 0 0 1 ] BUCKETIZE VALUES 0 GET 0 GET 'wind_avg' STORE
 
@@ -107,7 +118,7 @@
 		'showRangeSelector' true
 
 				}
-    'x' 8 'y' 2 'w' 4 'h' 3
+    'x' 8 'y' 2 'w' 4 'h' 4
     'type' 'bar-polar' 'macro' <%
 
       <% $plant 'Usak' == %> <%
@@ -137,6 +148,19 @@
 
       %>
       <% $plant 'Soke' == %> <% 
+      [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
+         $startDate TOSTRING 
+	       $endDate TOSTRING
+         //NOW 1 d
+      ] FETCH 'speed' STORE
+
+      [ $myreadtoken '~WIND_DIRECTION.*' { 'plant' $plant } 
+         $startDate TOSTRING 
+		     $endDate TOSTRING
+      ] FETCH 'degrees' STORE
+     [ $degrees bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'degrees' STORE  //align times
+     [ $speed bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE [ SWAP bucketizer.mean 0 10 m 0 ] BUCKETIZE 0 GET FILLPREVIOUS FILLNEXT SORT VALUES 'speed' STORE  //align times
+
 
       %> <% %> 3 SWITCH
  	
@@ -161,35 +185,35 @@
     0 'nw02' STORE 0 'nw24' STORE 0 'nw46' STORE 0 'nw68' STORE 0 'nw810' STORE 0 'nw1012' STORE 0 'nw1214' STORE 0 'nw1416' STORE 0 'nw1618' STORE 0 'nw1820' STORE 0 'nw20+' STORE
     0 'nnw02' STORE 0 'nnw24' STORE 0 'nnw46' STORE 0 'nnw68' STORE 0 'nnw810' STORE 0 'nnw1012' STORE 0 'nnw1214' STORE 0 'nnw1416' STORE 0 'nnw1618' STORE 0 'nnw1820' STORE 0 'nnw20+' STORE
      
-    // wind direction macros
-     <% $deg 11.25 <  %> 'northlt' STORE <% $deg 348.75 >  %> 'northgt' STORE  //N 348.75 - 11.25
-     <% $deg 11.25 >  %> 'nnegt' STORE <% $deg 33.75 <  %> 'nnelt' STORE       //NNE 11.25 - 33.75
-     <% $deg 33.75 >  %> 'negt' STORE <% $deg 56.25 <  %> 'nelt' STORE         //NE 33.75 - 56.25
-     <% $deg 56.25 >  %> 'enegt' STORE <% $deg 78.75 <  %> 'enelt' STORE       //ENE 56.25 - 78.75
-     <% $deg 78.75 >  %> 'egt' STORE <% $deg 101.25 <  %> 'elt' STORE          //E 78.75 - 101.25
-     <% $deg 101.25 >  %> 'esegt' STORE <% $deg 123.75 <  %> 'eselt' STORE     //ESE 101.25 - 123.75
-     <% $deg 123.75 >  %> 'segt' STORE <% $deg 146.25 <  %> 'selt' STORE       //SE 123.75 - 146.25
-     <% $deg 146.25 >  %> 'ssegt' STORE <% $deg 168.75 <  %> 'sselt' STORE     //SSE 146.25 - 168.75
-     <% $deg 168.75 >  %> 'sgt' STORE <% $deg 191.25 <  %> 'slt' STORE         //S 168.75 - 191.25
-     <% $deg 191.25 >  %> 'sswgt' STORE <% $deg 213.75 <  %> 'sswlt' STORE     //SSW 191.25 - 213.75
-     <% $deg 213.75 >  %> 'swgt' STORE <% $deg 236.25 <  %> 'swlt' STORE       //SW 213.75 - 236.25
-     <% $deg 236.25 >  %> 'wswgt' STORE <% $deg 258.75 <  %> 'wswlt' STORE     //WSW 236.25 - 258.75
-     <% $deg 258.75 >  %> 'wgt' STORE <% $deg 281.25 <  %> 'wlt' STORE         //W 258.75 - 281.25
-     <% $deg 281.25 >  %> 'wnwgt' STORE <% $deg 303.75 <  %> 'wnwlt' STORE     //WNW 281.25 - 303.75
-     <% $deg 303.75 >  %> 'nwgt' STORE <% $deg 326.25 <  %> 'nwlt' STORE       //NW 303.75 - 326.25
-     <% $deg 326.25 >  %> 'nnwgt' STORE <% $deg 348.75 <  %> 'nnwlt' STORE     //NNW 326.25 - 348.75
+     // wind direction macros
+     <% $deg 22.5 <  %> 'northlt' STORE <% $deg 337.5 >  %> 'northgt' STORE  //N 348.75 - 11.25
+    // <% $deg 11.25 >  %> 'nnegt' STORE <% $deg 33.75 <  %> 'nnelt' STORE       //NNE 11.25 - 33.75
+     <% $deg 22.5 >  %> 'negt' STORE <% $deg 67.5 <  %> 'nelt' STORE         //NE 33.75 - 56.25
+    // <% $deg 56.25 >  %> 'enegt' STORE <% $deg 78.75 <  %> 'enelt' STORE       //ENE 56.25 - 78.75
+     <% $deg 67.5 >  %> 'egt' STORE <% $deg 112.5 <  %> 'elt' STORE          //E 78.75 - 101.25
+    // <% $deg 101.25 >  %> 'esegt' STORE <% $deg 123.75 <  %> 'eselt' STORE     //ESE 101.25 - 123.75
+     <% $deg 112.5 >  %> 'segt' STORE <% $deg 157.5 <  %> 'selt' STORE       //SE 123.75 - 146.25
+    //  <% $deg 146.25 >  %> 'ssegt' STORE <% $deg 168.75 <  %> 'sselt' STORE     //SSE 146.25 - 168.75
+     <% $deg 157.5 >  %> 'sgt' STORE <% $deg 202.5 <  %> 'slt' STORE         //S 168.75 - 191.25
+     // <% $deg 191.25 >  %> 'sswgt' STORE <% $deg 213.75 <  %> 'sswlt' STORE     //SSW 191.25 - 213.75
+     <% $deg 202.5 >  %> 'swgt' STORE <% $deg 247.5 <  %> 'swlt' STORE       //SW 213.75 - 236.25
+     // <% $deg 236.25 >  %> 'wswgt' STORE <% $deg 258.75 <  %> 'wswlt' STORE     //WSW 236.25 - 258.75
+     <% $deg 247.5 >  %> 'wgt' STORE <% $deg 292.5 <  %> 'wlt' STORE         //W 258.75 - 281.25
+     // <% $deg 281.25 >  %> 'wnwgt' STORE <% $deg 303.75 <  %> 'wnwlt' STORE     //WNW 281.25 - 303.75
+     <% $deg 292.5 >  %> 'nwgt' STORE <% $deg 337.5 <  %> 'nwlt' STORE       //NW 303.75 - 326.25
+     //<% $deg 326.25 >  %> 'nnwgt' STORE <% $deg 348.75 <  %> 'nnwlt' STORE     //NNW 326.25 - 348.75
 
      // wind speed macros 
-     <% $spe 0.0 >=  %> '02gt' STORE <% $spe 2 <  %> '02lt' STORE     //speed 0-2 m/s
-     <% $spe 2.0 >=  %> '24gt' STORE <% $spe 4 <  %> '24lt' STORE     //speed 2-4 m/s
-     <% $spe 4.0 >=  %> '46gt' STORE <% $spe 6 <  %> '46lt' STORE     //speed 4-6 m/s
-     <% $spe 6.0 >=  %> '68gt' STORE <% $spe 8 <  %> '68lt' STORE     //speed 6-8 m/s
-     <% $spe 8.0 >=  %> '810gt' STORE <% $spe 10 <  %> '810lt' STORE     //speed 8-10 m/s
-     <% $spe 10.0 >=  %> '1012gt' STORE <% $spe 12 <  %> '1012lt' STORE     //speed 10-12 m/s
-     <% $spe 12.0 >=  %> '1214gt' STORE <% $spe 14 <  %> '1214lt' STORE     //speed 12-14 m/s
-     <% $spe 14.0 >=  %> '1416gt' STORE <% $spe 16 <  %> '1416lt' STORE     //speed 14-16 m/s
-     <% $spe 16.0 >=  %> '1618gt' STORE <% $spe 18 <  %> '1618lt' STORE     //speed 16-18 m/s
-     <% $spe 18.0 >=  %> '1820gt' STORE <% $spe 20 <  %> '1820lt' STORE     //speed 18-20 m/s
+     <% $spe 0.0 >=  %> '02gt' STORE <% $spe 4 <  %> '02lt' STORE     //speed 0-2 m/s
+     // <% $spe 2.0 >=  %> '24gt' STORE <% $spe 4 <  %> '24lt' STORE     //speed 2-4 m/s
+     <% $spe 4.0 >=  %> '46gt' STORE <% $spe 8 <  %> '46lt' STORE     //speed 4-6 m/s
+     // <% $spe 6.0 >=  %> '68gt' STORE <% $spe 8 <  %> '68lt' STORE     //speed 6-8 m/s
+     <% $spe 8.0 >=  %> '810gt' STORE <% $spe 12 <  %> '810lt' STORE     //speed 8-10 m/s
+     // <% $spe 10.0 >=  %> '1012gt' STORE <% $spe 12 <  %> '1012lt' STORE     //speed 10-12 m/s
+     <% $spe 12.0 >=  %> '1214gt' STORE <% $spe 16 <  %> '1214lt' STORE     //speed 12-14 m/s
+     // <% $spe 14.0 >=  %> '1416gt' STORE <% $spe 16 <  %> '1416lt' STORE     //speed 14-16 m/s
+     <% $spe 16.0 >=  %> '1618gt' STORE <% $spe 20 <  %> '1618lt' STORE     //speed 16-18 m/s
+     // <% $spe 18.0 >=  %> '1820gt' STORE <% $spe 20 <  %> '1820lt' STORE     //speed 18-20 m/s
      <% $spe 20.0 >=  %> '20gt' STORE <% $spe 50 <  %> '20lt' STORE     //speed 20+ m/s 
 
      //move along the list
@@ -202,468 +226,274 @@
      <% [ @northlt @northgt ] OR %> <%  //$deg TOSTRING 'N' +
           //define speed bucket 
           <% [ @02gt @02lt ] AND %> <%  $n02 1 + 'n02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $n24 1 + 'n24' STORE %> //$spe TOSTRING ' 24' + 
+          //<% [ @24gt @24lt ] AND %> <%  $n24 1 + 'n24' STORE %> //$spe TOSTRING ' 24' + 
           <% [ @46gt @46lt ] AND %> <%  $n46 1 + 'n46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $n68 1 + 'n68' STORE %>
+          // <% [ @68gt @68lt ] AND %> <%  $n68 1 + 'n68' STORE %>
           <% [ @810gt @810lt ] AND %> <%  $n810 1 + 'n810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $n1012 1 + 'n1012' STORE %>
+          // <% [ @1012gt @1012lt ] AND %> <%  $n1012 1 + 'n1012' STORE %>
           <% [ @1214gt @1214lt ] AND %> <%  $n1214 1 + 'n1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $n1416 1 + 'n1416' STORE %>
+          // <% [ @1416gt @1416lt ] AND %> <%  $n1416 1 + 'n1416' STORE %>
           <% [ @1618gt @1618lt ] AND %> <%  $n1618 1 + 'n1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $n1820 1 + 'n1820' STORE %>
+          // <% [ @1820gt @1820lt ] AND %> <%  $n1820 1 + 'n1820' STORE %>
           <% $n20+ 1 + 'n20+' STORE %>
-          10 SWITCH
+          5 SWITCH
  
       %> // north
-
-     <% [ @nnegt @nnelt ] AND %> <%  //$deg TOSTRING 'NNE' + 
-     //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $nne02 1 + 'nne02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $nne24 1 + 'nne24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $nne46 1 + 'nne46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $nne68 1 + 'nne68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $nne810 1 + 'nne810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $nne1012 1 + 'nne1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $nne1214 1 + 'nne1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $nne1416 1 + 'nne1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $nne1618 1 + 'nne1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $nne1820 1 + 'nne1820' STORE %>
-          <% $nne20+ 1 + 'nne20+' STORE %>
-          10 SWITCH
- 
-          %> // NNE
 
      <% [ @negt @nelt ] AND %> <%  //$deg TOSTRING 'NE' + 
       //define speed bucket 
           <% [ @02gt @02lt ] AND %> <%  $ne02 1 + 'ne02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $ne24 1 + 'ne24' STORE %> //$spe TOSTRING ' 24' + 
+          // <% [ @24gt @24lt ] AND %> <%  $ne24 1 + 'ne24' STORE %> //$spe TOSTRING ' 24' + 
           <% [ @46gt @46lt ] AND %> <%  $ne46 1 + 'ne46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $ne68 1 + 'ne68' STORE %>
+          // <% [ @68gt @68lt ] AND %> <%  $ne68 1 + 'ne68' STORE %>
           <% [ @810gt @810lt ] AND %> <%  $ne810 1 + 'ne810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $ne1012 1 + 'ne1012' STORE %>
+          // <% [ @1012gt @1012lt ] AND %> <%  $ne1012 1 + 'ne1012' STORE %>
           <% [ @1214gt @1214lt ] AND %> <%  $ne1214 1 + 'ne1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $ne1416 1 + 'ne1416' STORE %>
+          // <% [ @1416gt @1416lt ] AND %> <%  $ne1416 1 + 'ne1416' STORE %>
           <% [ @1618gt @1618lt ] AND %> <%  $ne1618 1 + 'ne1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $ne1820 1 + 'ne1820' STORE %>
+          // <% [ @1820gt @1820lt ] AND %> <%  $ne1820 1 + 'ne1820' STORE %>
           <% $ne20+ 1 + 'ne20+' STORE %>
-          10 SWITCH
+          5 SWITCH
  
      %> //NE
-     <% [ @enegt @enelt ] AND %> <%  
-       //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $ene02 1 + 'ene02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $ene24 1 + 'ene24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $ene46 1 + 'ene46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $ene68 1 + 'ene68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $ene810 1 + 'ene810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $ene1012 1 + 'ene1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $ene1214 1 + 'ene1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $ene1416 1 + 'ene1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $ene1618 1 + 'ene1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $ene1820 1 + 'ene1820' STORE %>
-          <% $ene20+ 1 + 'ene20+' STORE %>
-          10 SWITCH
- 
-      %> //ENE
+
      <% [ @egt @elt ] AND %> <% 
        //define speed bucket 
           <% [ @02gt @02lt ] AND %> <%  $e02 1 + 'e02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $e24 1 + 'e24' STORE %> //$spe TOSTRING ' 24' + 
+          // <% [ @24gt @24lt ] AND %> <%  $e24 1 + 'e24' STORE %> //$spe TOSTRING ' 24' + 
           <% [ @46gt @46lt ] AND %> <%  $e46 1 + 'e46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $e68 1 + 'e68' STORE %>
+          //<% [ @68gt @68lt ] AND %> <%  $e68 1 + 'e68' STORE %>
           <% [ @810gt @810lt ] AND %> <%  $e810 1 + 'e810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $e1012 1 + 'e1012' STORE %>
+          //<% [ @1012gt @1012lt ] AND %> <%  $e1012 1 + 'e1012' STORE %>
           <% [ @1214gt @1214lt ] AND %> <%  $e1214 1 + 'e1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $e1416 1 + 'e1416' STORE %>
+          //<% [ @1416gt @1416lt ] AND %> <%  $e1416 1 + 'e1416' STORE %>
           <% [ @1618gt @1618lt ] AND %> <%  $e1618 1 + 'e1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $e1820 1 + 'e1820' STORE %>
+          //<% [ @1820gt @1820lt ] AND %> <%  $e1820 1 + 'e1820' STORE %>
           <% $e20+ 1 + 'e20+' STORE %>
-          10 SWITCH
+          5 SWITCH
  
       %> //E
-     <% [ @esegt @eselt ] AND %> <%  
-       //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $ese02 1 + 'ese02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $ese24 1 + 'ese24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $ese46 1 + 'ese46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $ese68 1 + 'ese68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $ese810 1 + 'ese810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $ese1012 1 + 'ese1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $ese1214 1 + 'ese1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $ese1416 1 + 'ese1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $ese1618 1 + 'ese1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $ese1820 1 + 'ese1820' STORE %>
-          <% $ese20+ 1 + 'ese20+' STORE %>
-          10 SWITCH
- 
-     %> //ESE
+
      <% [ @segt @selt ] AND %> <%  
        //define speed bucket 
           <% [ @02gt @02lt ] AND %> <%  $se02 1 + 'se02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $se24 1 + 'se24' STORE %> //$spe TOSTRING ' 24' + 
+          //<% [ @24gt @24lt ] AND %> <%  $se24 1 + 'se24' STORE %> //$spe TOSTRING ' 24' + 
           <% [ @46gt @46lt ] AND %> <%  $se46 1 + 'se46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $se68 1 + 'se68' STORE %>
+          //<% [ @68gt @68lt ] AND %> <%  $se68 1 + 'se68' STORE %>
           <% [ @810gt @810lt ] AND %> <%  $se810 1 + 'se810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $se1012 1 + 'se1012' STORE %>
+          //<% [ @1012gt @1012lt ] AND %> <%  $se1012 1 + 'se1012' STORE %>
           <% [ @1214gt @1214lt ] AND %> <%  $se1214 1 + 'se1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $se1416 1 + 'se1416' STORE %>
+          //<% [ @1416gt @1416lt ] AND %> <%  $se1416 1 + 'se1416' STORE %>
           <% [ @1618gt @1618lt ] AND %> <%  $se1618 1 + 'se1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $se1820 1 + 'se1820' STORE %>
+          //<% [ @1820gt @1820lt ] AND %> <%  $se1820 1 + 'se1820' STORE %>
           <% $se20+ 1 + 'se20+' STORE %>
-          10 SWITCH
+          5 SWITCH
  
       %> //SE
-     <% [ @ssegt @sselt ] AND %> <%  
-       //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $sse02 1 + 'sse02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $sse24 1 + 'sse24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $sse46 1 + 'sse46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $sse68 1 + 'sse68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $sse810 1 + 'sse810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $sse1012 1 + 'sse1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $sse1214 1 + 'sse1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $sse1416 1 + 'sse1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $sse1618 1 + 'sse1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $sse1820 1 + 'sse1820' STORE %>
-          <% $sse20+ 1 + 'sse20+' STORE %>
-          10 SWITCH
- 
-      %> //SSE
+
      <% [ @sgt @slt ] AND %> <%  
        //define speed bucket 
           <% [ @02gt @02lt ] AND %> <%  $s02 1 + 's02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $s24 1 + 's24' STORE %> //$spe TOSTRING ' 24' + 
+          //<% [ @24gt @24lt ] AND %> <%  $s24 1 + 's24' STORE %> //$spe TOSTRING ' 24' + 
           <% [ @46gt @46lt ] AND %> <%  $s46 1 + 's46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $s68 1 + 's68' STORE %>
+          //<% [ @68gt @68lt ] AND %> <%  $s68 1 + 's68' STORE %>
           <% [ @810gt @810lt ] AND %> <%  $s810 1 + 's810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $s1012 1 + 's1012' STORE %>
+         // <% [ @1012gt @1012lt ] AND %> <%  $s1012 1 + 's1012' STORE %>
           <% [ @1214gt @1214lt ] AND %> <%  $s1214 1 + 's1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $s1416 1 + 's1416' STORE %>
+          //<% [ @1416gt @1416lt ] AND %> <%  $s1416 1 + 's1416' STORE %>
           <% [ @1618gt @1618lt ] AND %> <%  $s1618 1 + 's1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $s1820 1 + 's1820' STORE %>
+          //<% [ @1820gt @1820lt ] AND %> <%  $s1820 1 + 's1820' STORE %>
           <% $s20+ 1 + 's20+' STORE %>
-          10 SWITCH
+          5 SWITCH
  
       %> //S
-     <% [ @sswgt @sswlt ] AND %> <%  
-       //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $ssw02 1 + 'ssw02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $ssw24 1 + 'ssw24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $ssw46 1 + 'ssw46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $ssw68 1 + 'ssw68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $ssw810 1 + 'ssw810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $ssw1012 1 + 'ssw1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $ssw1214 1 + 'ssw1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $ssw1416 1 + 'ssw1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $ssw1618 1 + 'ssw1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $ssw1820 1 + 'ssw1820' STORE %>
-          <% $ssw20+ 1 + 'ssw20+' STORE %>
-          10 SWITCH
- 
-      %> //SSW
+
      <% [ @swgt @swlt ] AND %> <%  
        //define speed bucket 
           <% [ @02gt @02lt ] AND %> <%  $sw02 1 + 'sw02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $sw24 1 + 'sw24' STORE %> //$spe TOSTRING ' 24' + 
+          //<% [ @24gt @24lt ] AND %> <%  $sw24 1 + 'sw24' STORE %> //$spe TOSTRING ' 24' + 
           <% [ @46gt @46lt ] AND %> <%  $sw46 1 + 'sw46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $sw68 1 + 'sw68' STORE %>
+          //<% [ @68gt @68lt ] AND %> <%  $sw68 1 + 'sw68' STORE %>
           <% [ @810gt @810lt ] AND %> <%  $sw810 1 + 'sw810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $sw1012 1 + 'sw1012' STORE %>
+          //<% [ @1012gt @1012lt ] AND %> <%  $sw1012 1 + 'sw1012' STORE %>
           <% [ @1214gt @1214lt ] AND %> <%  $sw1214 1 + 'sw1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $sw1416 1 + 'sw1416' STORE %>
+          //<% [ @1416gt @1416lt ] AND %> <%  $sw1416 1 + 'sw1416' STORE %>
           <% [ @1618gt @1618lt ] AND %> <%  $sw1618 1 + 'sw1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $sw1820 1 + 'sw1820' STORE %>
+          //<% [ @1820gt @1820lt ] AND %> <%  $sw1820 1 + 'sw1820' STORE %>
           <% $sw20+ 1 + 'sw20+' STORE %>
-          10 SWITCH
+          5 SWITCH
  
       %> //SW
-     <% [ @wswgt @wswlt ] AND %> <%  
-      //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $wsw02 1 + 'wsw02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $wsw24 1 + 'wsw24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $wsw46 1 + 'wsw46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $wsw68 1 + 'wsw68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $wsw810 1 + 'wsw810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $wsw1012 1 + 'wsw1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $wsw1214 1 + 'wsw1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $wsw1416 1 + 'wsw1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $wsw1618 1 + 'wsw1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $wsw1820 1 + 'wsw1820' STORE %>
-          <% $wsw20+ 1 + 'wsw20+' STORE %>
-          10 SWITCH
-      %> //WSW
+
      <% [ @wgt @wlt ] AND %> <%  
       //define speed bucket 
           <% [ @02gt @02lt ] AND %> <%  $w02 1 + 'w02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $w24 1 + 'w24' STORE %> //$spe TOSTRING ' 24' + 
+          //<% [ @24gt @24lt ] AND %> <%  $w24 1 + 'w24' STORE %> //$spe TOSTRING ' 24' + 
           <% [ @46gt @46lt ] AND %> <%  $w46 1 + 'w46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $w68 1 + 'w68' STORE %>
+          //<% [ @68gt @68lt ] AND %> <%  $w68 1 + 'w68' STORE %>
           <% [ @810gt @810lt ] AND %> <%  $w810 1 + 'w810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $w1012 1 + 'w1012' STORE %>
+          //<% [ @1012gt @1012lt ] AND %> <%  $w1012 1 + 'w1012' STORE %>
           <% [ @1214gt @1214lt ] AND %> <%  $w1214 1 + 'w1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $w1416 1 + 'w1416' STORE %>
+          //<% [ @1416gt @1416lt ] AND %> <%  $w1416 1 + 'w1416' STORE %>
           <% [ @1618gt @1618lt ] AND %> <%  $w1618 1 + 'w1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $w1820 1 + 'w1820' STORE %>
+          //<% [ @1820gt @1820lt ] AND %> <%  $w1820 1 + 'w1820' STORE %>
           <% $w20+ 1 + 'w20+' STORE %>
-          10 SWITCH
+          5 SWITCH
       %> //W
-     <% [ @wnwgt @wnwlt ] AND %> <%  
-      //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $wnw02 1 + 'wnw02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $wnw24 1 + 'wnw24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $wnw46 1 + 'wnw46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $wnw68 1 + 'wnw68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $wnw810 1 + 'wnw810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $wnw1012 1 + 'wnw1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $wnw1214 1 + 'wnw1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $wnw1416 1 + 'wnw1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $wnw1618 1 + 'wnw1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $wnw1820 1 + 'wnw1820' STORE %>
-          <% $wnw20+ 1 + 'wnw20+' STORE %>
-          10 SWITCH
-      %> //WNW
-     <% [ @nwgt @nwlt ] AND %> <%  
-      //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $nw02 1 + 'nw02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $nw24 1 + 'nw24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $nw46 1 + 'nw46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $nw68 1 + 'nw68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $nw810 1 + 'nw810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $nw1012 1 + 'nw1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $nw1214 1 + 'nw1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $nw1416 1 + 'nw1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $nw1618 1 + 'nw1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $nw1820 1 + 'nw1820' STORE %>
-          <% $nw20+ 1 + 'nw20+' STORE %>
-          10 SWITCH
-      %> //NW
+
+     //<% [ @nwgt @nwlt ] AND %> 
      <%  
       //define speed bucket 
-          <% [ @02gt @02lt ] AND %> <%  $nnw02 1 + 'nnw02' STORE  %>  //$spe TOSTRING ' 02' +
-          <% [ @24gt @24lt ] AND %> <%  $nnw24 1 + 'nnw24' STORE %> //$spe TOSTRING ' 24' + 
-          <% [ @46gt @46lt ] AND %> <%  $nnw46 1 + 'nnw46' STORE %>
-          <% [ @68gt @68lt ] AND %> <%  $nnw68 1 + 'nnw68' STORE %>
-          <% [ @810gt @810lt ] AND %> <%  $nnw810 1 + 'nnw810' STORE %>
-          <% [ @1012gt @1012lt ] AND %> <%  $nnw1012 1 + 'nnw1012' STORE %>
-          <% [ @1214gt @1214lt ] AND %> <%  $nnw1214 1 + 'nnw1214' STORE %>
-          <% [ @1416gt @1416lt ] AND %> <%  $nnw1416 1 + 'nnw1416' STORE %>
-          <% [ @1618gt @1618lt ] AND %> <%  $nnw1618 1 + 'nnw1618' STORE %>
-          <% [ @1820gt @1820lt ] AND %> <%  $nnw1820 1 + 'nnw1820' STORE %>
-          <% $nnw20+ 1 + 'nnw20+' STORE %>
-          10 SWITCH
-      %> //NNW
-      15 SWITCH
+          <% [ @02gt @02lt ] AND %> <%  $nw02 1 + 'nw02' STORE  %>  //$spe TOSTRING ' 02' +
+          //<% [ @24gt @24lt ] AND %> <%  $nw24 1 + 'nw24' STORE %> //$spe TOSTRING ' 24' + 
+          <% [ @46gt @46lt ] AND %> <%  $nw46 1 + 'nw46' STORE %>
+         // <% [ @68gt @68lt ] AND %> <%  $nw68 1 + 'nw68' STORE %>
+          <% [ @810gt @810lt ] AND %> <%  $nw810 1 + 'nw810' STORE %>
+          //<% [ @1012gt @1012lt ] AND %> <%  $nw1012 1 + 'nw1012' STORE %>
+          <% [ @1214gt @1214lt ] AND %> <%  $nw1214 1 + 'nw1214' STORE %>
+          //<% [ @1416gt @1416lt ] AND %> <%  $nw1416 1 + 'nw1416' STORE %>
+          <% [ @1618gt @1618lt ] AND %> <%  $nw1618 1 + 'nw1618' STORE %>
+          //<% [ @1820gt @1820lt ] AND %> <%  $nw1820 1 + 'nw1820' STORE %>
+          <% $nw20+ 1 + 'nw20+' STORE %>
+          5 SWITCH
+      %> //NW
+   
+      7 SWITCH
         
      %> FOR
 
 //convert to percent
-$n02 TODOUBLE $len / TODOUBLE 100 * 'n02' STORE 
-$n24 TODOUBLE $len / TODOUBLE 100 * 'n24' STORE 
+$n02 TODOUBLE $len / TODOUBLE 100 * 'n02' STORE  
+//$n24 TODOUBLE $len / TODOUBLE 100 * 'n24' STORE 
 $n46 TODOUBLE $len / TODOUBLE 100 * 'n46' STORE
-$n68 TODOUBLE $len / TODOUBLE 100 * 'n68' STORE
+//$n68 TODOUBLE $len / TODOUBLE 100 * 'n68' STORE
 $n810 TODOUBLE $len / TODOUBLE 100 * 'n810' STORE
-$n1012 TODOUBLE $len / TODOUBLE 100 * 'n1012' STORE
+//$n1012 TODOUBLE $len / TODOUBLE 100 * 'n1012' STORE
 $n1214 TODOUBLE $len / TODOUBLE 100 * 'n1214' STORE
-$n1416 TODOUBLE $len / TODOUBLE 100 * 'n1416' STORE
+//$n1416 TODOUBLE $len / TODOUBLE 100 * 'n1416' STORE
 $n1618 TODOUBLE $len / TODOUBLE 100 * 'n1618' STORE
-$n1820 TODOUBLE $len / TODOUBLE 100 * 'n1820' STORE
+//$n1820 TODOUBLE $len / TODOUBLE 100 * 'n1820' STORE
 $n20+ TODOUBLE $len / TODOUBLE 100 * 'n20+' STORE
 
-$nne02 TODOUBLE $len / TODOUBLE 100 * 'nne02' STORE 
-$nne24 TODOUBLE $len / TODOUBLE 100 * 'nne24' STORE 
-$nne46 TODOUBLE $len / TODOUBLE 100 * 'nne46' STORE
-$nne68 TODOUBLE $len / TODOUBLE 100 * 'nne68' STORE
-$nne810 TODOUBLE $len / TODOUBLE 100 * 'nne810' STORE
-$nne1012 TODOUBLE $len / TODOUBLE 100 * 'nne1012' STORE
-$nne1214 TODOUBLE $len / TODOUBLE 100 * 'nne1214' STORE
-$nne1416 TODOUBLE $len / TODOUBLE 100 * 'nne1416' STORE
-$nne1618 TODOUBLE $len / TODOUBLE 100 * 'nne1618' STORE
-$nne1820 TODOUBLE $len / TODOUBLE 100 * 'nne1820' STORE
-$nne20+ TODOUBLE $len / TODOUBLE 100 * 'nne20+' STORE
 
 $ne02 TODOUBLE $len / TODOUBLE 100 * 'ne02' STORE 
-$ne24 TODOUBLE $len / TODOUBLE 100 * 'ne24' STORE 
+//$ne24 TODOUBLE $len / TODOUBLE 100 * 'ne24' STORE 
 $ne46 TODOUBLE $len / TODOUBLE 100 * 'ne46' STORE
-$ne68 TODOUBLE $len / TODOUBLE 100 * 'ne68' STORE
+//$ne68 TODOUBLE $len / TODOUBLE 100 * 'ne68' STORE
 $ne810 TODOUBLE $len / TODOUBLE 100 * 'ne810' STORE
-$ne1012 TODOUBLE $len / TODOUBLE 100 * 'ne1012' STORE
+//$ne1012 TODOUBLE $len / TODOUBLE 100 * 'ne1012' STORE
 $ne1214 TODOUBLE $len / TODOUBLE 100 * 'ne1214' STORE
-$ne1416 TODOUBLE $len / TODOUBLE 100 * 'ne1416' STORE
+//$ne1416 TODOUBLE $len / TODOUBLE 100 * 'ne1416' STORE
 $ne1618 TODOUBLE $len / TODOUBLE 100 * 'ne1618' STORE
-$ne1820 TODOUBLE $len / TODOUBLE 100 * 'ne1820' STORE
+//$ne1820 TODOUBLE $len / TODOUBLE 100 * 'ne1820' STORE
 $ne20+ TODOUBLE $len / TODOUBLE 100 * 'ne20+' STORE
 
-$ene02 TODOUBLE $len / TODOUBLE 100 * 'ene02' STORE 
-$ene24 TODOUBLE $len / TODOUBLE 100 * 'ene24' STORE 
-$ene46 TODOUBLE $len / TODOUBLE 100 * 'ene46' STORE
-$ene68 TODOUBLE $len / TODOUBLE 100 * 'ene68' STORE
-$ene810 TODOUBLE $len / TODOUBLE 100 * 'ene810' STORE
-$ene1012 TODOUBLE $len / TODOUBLE 100 * 'ene1012' STORE
-$ene1214 TODOUBLE $len / TODOUBLE 100 * 'ene1214' STORE
-$ene1416 TODOUBLE $len / TODOUBLE 100 * 'ene1416' STORE
-$ene1618 TODOUBLE $len / TODOUBLE 100 * 'ene1618' STORE
-$ene1820 TODOUBLE $len / TODOUBLE 100 * 'ene1820' STORE
-$ene20+ TODOUBLE $len / TODOUBLE 100 * 'ene20+' STORE
 
 $e02 TODOUBLE $len / TODOUBLE 100 * 'e02' STORE 
-$e24 TODOUBLE $len / TODOUBLE 100 * 'e24' STORE 
+//$e24 TODOUBLE $len / TODOUBLE 100 * 'e24' STORE 
 $e46 TODOUBLE $len / TODOUBLE 100 * 'e46' STORE
-$e68 TODOUBLE $len / TODOUBLE 100 * 'e68' STORE
+//$e68 TODOUBLE $len / TODOUBLE 100 * 'e68' STORE
 $e810 TODOUBLE $len / TODOUBLE 100 * 'e810' STORE
-$e1012 TODOUBLE $len / TODOUBLE 100 * 'e1012' STORE
+//$e1012 TODOUBLE $len / TODOUBLE 100 * 'e1012' STORE
 $e1214 TODOUBLE $len / TODOUBLE 100 * 'e1214' STORE
-$e1416 TODOUBLE $len / TODOUBLE 100 * 'e1416' STORE
+//$e1416 TODOUBLE $len / TODOUBLE 100 * 'e1416' STORE
 $e1618 TODOUBLE $len / TODOUBLE 100 * 'e1618' STORE
-$e1820 TODOUBLE $len / TODOUBLE 100 * 'e1820' STORE
+//$e1820 TODOUBLE $len / TODOUBLE 100 * 'e1820' STORE
 $e20+ TODOUBLE $len / TODOUBLE 100 * 'e20+' STORE
 
-$ese02 TODOUBLE $len / TODOUBLE 100 * 'ese02' STORE 
-$ese24 TODOUBLE $len / TODOUBLE 100 * 'ese24' STORE 
-$ese46 TODOUBLE $len / TODOUBLE 100 * 'ese46' STORE
-$ese68 TODOUBLE $len / TODOUBLE 100 * 'ese68' STORE
-$ese810 TODOUBLE $len / TODOUBLE 100 * 'ese810' STORE
-$ese1012 TODOUBLE $len / TODOUBLE 100 * 'ese1012' STORE
-$ese1214 TODOUBLE $len / TODOUBLE 100 * 'ese1214' STORE
-$ese1416 TODOUBLE $len / TODOUBLE 100 * 'ese1416' STORE
-$ese1618 TODOUBLE $len / TODOUBLE 100 * 'ese1618' STORE
-$ese1820 TODOUBLE $len / TODOUBLE 100 * 'ese1820' STORE
-$ese20+ TODOUBLE $len / TODOUBLE 100 * 'ese20+' STORE
 
 $se02 TODOUBLE $len / TODOUBLE 100 * 'se02' STORE 
-$se24 TODOUBLE $len / TODOUBLE 100 * 'se24' STORE 
+//$se24 TODOUBLE $len / TODOUBLE 100 * 'se24' STORE 
 $se46 TODOUBLE $len / TODOUBLE 100 * 'se46' STORE
-$se68 TODOUBLE $len / TODOUBLE 100 * 'se68' STORE
+//$se68 TODOUBLE $len / TODOUBLE 100 * 'se68' STORE
 $se810 TODOUBLE $len / TODOUBLE 100 * 'se810' STORE
-$se1012 TODOUBLE $len / TODOUBLE 100 * 'se1012' STORE
+//$se1012 TODOUBLE $len / TODOUBLE 100 * 'se1012' STORE
 $se1214 TODOUBLE $len / TODOUBLE 100 * 'se1214' STORE
-$se1416 TODOUBLE $len / TODOUBLE 100 * 'se1416' STORE
+//$se1416 TODOUBLE $len / TODOUBLE 100 * 'se1416' STORE
 $se1618 TODOUBLE $len / TODOUBLE 100 * 'se1618' STORE
-$se1820 TODOUBLE $len / TODOUBLE 100 * 'se1820' STORE
+//$se1820 TODOUBLE $len / TODOUBLE 100 * 'se1820' STORE
 $se20+ TODOUBLE $len / TODOUBLE 100 * 'se20+' STORE
 
-$sse02 TODOUBLE $len / TODOUBLE 100 * 'sse02' STORE 
-$sse24 TODOUBLE $len / TODOUBLE 100 * 'sse24' STORE 
-$sse46 TODOUBLE $len / TODOUBLE 100 * 'sse46' STORE
-$sse68 TODOUBLE $len / TODOUBLE 100 * 'sse68' STORE
-$sse810 TODOUBLE $len / TODOUBLE 100 * 'sse810' STORE
-$sse1012 TODOUBLE $len / TODOUBLE 100 * 'sse1012' STORE
-$sse1214 TODOUBLE $len / TODOUBLE 100 * 'sse1214' STORE
-$sse1416 TODOUBLE $len / TODOUBLE 100 * 'sse1416' STORE
-$sse1618 TODOUBLE $len / TODOUBLE 100 * 'sse1618' STORE
-$sse1820 TODOUBLE $len / TODOUBLE 100 * 'sse1820' STORE
-$sse20+ TODOUBLE $len / TODOUBLE 100 * 'sse20+' STORE
 
 $s02 TODOUBLE $len / TODOUBLE 100 * 's02' STORE 
-$s24 TODOUBLE $len / TODOUBLE 100 * 's24' STORE 
+//$s24 TODOUBLE $len / TODOUBLE 100 * 's24' STORE 
 $s46 TODOUBLE $len / TODOUBLE 100 * 's46' STORE
-$s68 TODOUBLE $len / TODOUBLE 100 * 's68' STORE
+//$s68 TODOUBLE $len / TODOUBLE 100 * 's68' STORE
 $s810 TODOUBLE $len / TODOUBLE 100 * 's810' STORE
-$s1012 TODOUBLE $len / TODOUBLE 100 * 's1012' STORE
+//$s1012 TODOUBLE $len / TODOUBLE 100 * 's1012' STORE
 $s1214 TODOUBLE $len / TODOUBLE 100 * 's1214' STORE
-$s1416 TODOUBLE $len / TODOUBLE 100 * 's1416' STORE
+//$s1416 TODOUBLE $len / TODOUBLE 100 * 's1416' STORE
 $s1618 TODOUBLE $len / TODOUBLE 100 * 's1618' STORE
-$s1820 TODOUBLE $len / TODOUBLE 100 * 's1820' STORE
+//$s1820 TODOUBLE $len / TODOUBLE 100 * 's1820' STORE
 $s20+ TODOUBLE $len / TODOUBLE 100 * 's20+' STORE
 
-$ssw02 TODOUBLE $len / TODOUBLE 100 * 'ssw02' STORE 
-$ssw24 TODOUBLE $len / TODOUBLE 100 * 'ssw24' STORE 
-$ssw46 TODOUBLE $len / TODOUBLE 100 * 'ssw46' STORE
-$ssw68 TODOUBLE $len / TODOUBLE 100 * 'ssw68' STORE
-$ssw810 TODOUBLE $len / TODOUBLE 100 * 'ssw810' STORE
-$ssw1012 TODOUBLE $len / TODOUBLE 100 * 'ssw1012' STORE
-$ssw1214 TODOUBLE $len / TODOUBLE 100 * 'ssw1214' STORE
-$ssw1416 TODOUBLE $len / TODOUBLE 100 * 'ssw1416' STORE
-$ssw1618 TODOUBLE $len / TODOUBLE 100 * 'ssw1618' STORE
-$ssw1820 TODOUBLE $len / TODOUBLE 100 * 'ssw1820' STORE
-$ssw20+ TODOUBLE $len / TODOUBLE 100 * 'ssw20+' STORE
 
 $sw02 TODOUBLE $len / TODOUBLE 100 * 'sw02' STORE 
-$sw24 TODOUBLE $len / TODOUBLE 100 * 'sw24' STORE 
+//$sw24 TODOUBLE $len / TODOUBLE 100 * 'sw24' STORE 
 $sw46 TODOUBLE $len / TODOUBLE 100 * 'sw46' STORE
-$sw68 TODOUBLE $len / TODOUBLE 100 * 'sw68' STORE
+//$sw68 TODOUBLE $len / TODOUBLE 100 * 'sw68' STORE
 $sw810 TODOUBLE $len / TODOUBLE 100 * 'sw810' STORE
-$sw1012 TODOUBLE $len / TODOUBLE 100 * 'sw1012' STORE
+//$sw1012 TODOUBLE $len / TODOUBLE 100 * 'sw1012' STORE
 $sw1214 TODOUBLE $len / TODOUBLE 100 * 'sw1214' STORE
-$sw1416 TODOUBLE $len / TODOUBLE 100 * 'sw1416' STORE
+//$sw1416 TODOUBLE $len / TODOUBLE 100 * 'sw1416' STORE
 $sw1618 TODOUBLE $len / TODOUBLE 100 * 'sw1618' STORE
-$sw1820 TODOUBLE $len / TODOUBLE 100 * 'sw1820' STORE
+//$sw1820 TODOUBLE $len / TODOUBLE 100 * 'sw1820' STORE
 $sw20+ TODOUBLE $len / TODOUBLE 100 * 'sw20+' STORE
 
-$wsw02 TODOUBLE $len / TODOUBLE 100 * 'wsw02' STORE 
-$wsw24 TODOUBLE $len / TODOUBLE 100 * 'wsw24' STORE 
-$wsw46 TODOUBLE $len / TODOUBLE 100 * 'wsw46' STORE
-$wsw68 TODOUBLE $len / TODOUBLE 100 * 'wsw68' STORE
-$wsw810 TODOUBLE $len / TODOUBLE 100 * 'wsw810' STORE
-$wsw1012 TODOUBLE $len / TODOUBLE 100 * 'wsw1012' STORE
-$wsw1214 TODOUBLE $len / TODOUBLE 100 * 'wsw1214' STORE
-$wsw1416 TODOUBLE $len / TODOUBLE 100 * 'wsw1416' STORE
-$wsw1618 TODOUBLE $len / TODOUBLE 100 * 'wsw1618' STORE
-$wsw1820 TODOUBLE $len / TODOUBLE 100 * 'wsw1820' STORE
-$wsw20+ TODOUBLE $len / TODOUBLE 100 * 'wsw20+' STORE
 
 $w02 TODOUBLE $len / TODOUBLE 100 * 'w02' STORE 
-$w24 TODOUBLE $len / TODOUBLE 100 * 'w24' STORE 
+//$w24 TODOUBLE $len / TODOUBLE 100 * 'w24' STORE 
 $w46 TODOUBLE $len / TODOUBLE 100 * 'w46' STORE
-$w68 TODOUBLE $len / TODOUBLE 100 * 'w68' STORE
+//$w68 TODOUBLE $len / TODOUBLE 100 * 'w68' STORE
 $w810 TODOUBLE $len / TODOUBLE 100 * 'w810' STORE
-$w1012 TODOUBLE $len / TODOUBLE 100 * 'w1012' STORE
+//$w1012 TODOUBLE $len / TODOUBLE 100 * 'w1012' STORE
 $w1214 TODOUBLE $len / TODOUBLE 100 * 'w1214' STORE
-$w1416 TODOUBLE $len / TODOUBLE 100 * 'w1416' STORE
+//$w1416 TODOUBLE $len / TODOUBLE 100 * 'w1416' STORE
 $w1618 TODOUBLE $len / TODOUBLE 100 * 'w1618' STORE
-$w1820 TODOUBLE $len / TODOUBLE 100 * 'w1820' STORE
+//$w1820 TODOUBLE $len / TODOUBLE 100 * 'w1820' STORE
 $w20+ TODOUBLE $len / TODOUBLE 100 * 'w20+' STORE
 
-$wnw02 TODOUBLE $len / TODOUBLE 100 * 'wnw02' STORE 
-$wnw24 TODOUBLE $len / TODOUBLE 100 * 'wnw24' STORE 
-$wnw46 TODOUBLE $len / TODOUBLE 100 * 'wnw46' STORE
-$wnw68 TODOUBLE $len / TODOUBLE 100 * 'wnw68' STORE
-$wnw810 TODOUBLE $len / TODOUBLE 100 * 'wnw810' STORE
-$wnw1012 TODOUBLE $len / TODOUBLE 100 * 'wnw1012' STORE
-$wnw1214 TODOUBLE $len / TODOUBLE 100 * 'wnw1214' STORE
-$wnw1416 TODOUBLE $len / TODOUBLE 100 * 'wnw1416' STORE
-$wnw1618 TODOUBLE $len / TODOUBLE 100 * 'wnw1618' STORE
-$wnw1820 TODOUBLE $len / TODOUBLE 100 * 'wnw1820' STORE
-$wnw20+ TODOUBLE $len / TODOUBLE 100 * 'wnw20+' STORE
 
 $nw02 TODOUBLE $len / TODOUBLE 100 * 'nw02' STORE 
-$nw24 TODOUBLE $len / TODOUBLE 100 * 'nw24' STORE 
+//$nw24 TODOUBLE $len / TODOUBLE 100 * 'nw24' STORE 
 $nw46 TODOUBLE $len / TODOUBLE 100 * 'nw46' STORE
-$nw68 TODOUBLE $len / TODOUBLE 100 * 'nw68' STORE
+//$nw68 TODOUBLE $len / TODOUBLE 100 * 'nw68' STORE
 $nw810 TODOUBLE $len / TODOUBLE 100 * 'nw810' STORE
-$nw1012 TODOUBLE $len / TODOUBLE 100 * 'nw1012' STORE
+//$nw1012 TODOUBLE $len / TODOUBLE 100 * 'nw1012' STORE
 $nw1214 TODOUBLE $len / TODOUBLE 100 * 'nw1214' STORE
-$nw1416 TODOUBLE $len / TODOUBLE 100 * 'nw1416' STORE
+//$nw1416 TODOUBLE $len / TODOUBLE 100 * 'nw1416' STORE
 $nw1618 TODOUBLE $len / TODOUBLE 100 * 'nw1618' STORE
-$nw1820 TODOUBLE $len / TODOUBLE 100 * 'nw1820' STORE
+//$nw1820 TODOUBLE $len / TODOUBLE 100 * 'nw1820' STORE
 $nw20+ TODOUBLE $len / TODOUBLE 100 * 'nw20+' STORE
 
-$nnw02 TODOUBLE $len / TODOUBLE 100 * 'nnw02' STORE 
-$nnw24 TODOUBLE $len / TODOUBLE 100 * 'nnw24' STORE 
-$nnw46 TODOUBLE $len / TODOUBLE 100 * 'nnw46' STORE
-$nnw68 TODOUBLE $len / TODOUBLE 100 * 'nnw68' STORE
-$nnw810 TODOUBLE $len / TODOUBLE 100 * 'nnw810' STORE
-$nnw1012 TODOUBLE $len / TODOUBLE 100 * 'nnw1012' STORE
-$nnw1214 TODOUBLE $len / TODOUBLE 100 * 'nnw1214' STORE
-$nnw1416 TODOUBLE $len / TODOUBLE 100 * 'nnw1416' STORE
-$nnw1618 TODOUBLE $len / TODOUBLE 100 * 'nnw1618' STORE
-$nnw1820 TODOUBLE $len / TODOUBLE 100 * 'nnw1820' STORE
-$nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
+
+[ 'nw02' 'n02' 'ne02' 'e02' 'se02' 's02' 'sw02' 'w02' 'nw46' 'n46' 'ne46' 'e46' 'se46' 's46' 'sw46' 'w46' 'nw810' 'n810' 'ne810' 'e810' 'se810' 's810' 'sw810' 'w810' 'nw1214' 'n1214' 'ne1214' 'e1214' 'se1214' 's1214' 'sw1214' 'w1214' 'nw1618' 'n1618' 'ne1618' 'e1618' 'se1618' 's1618' 'sw1618' 'w1618' 'nw20+' 'n20+' 'ne20+' 'e20+' 'se20+' 's20+' 'sw20+' 'w20+' ] 'formatnames' STORE
+
+[ $nw02 $n02 $ne02 $e02 $se02 $s02 $sw02 $w02 $nw46 $n46 $ne46 $e46 $se46 $s46 $sw46 $w46 $nw810 $n810 $ne810 $e810 $se810 $s810 $sw810 $w810 $nw1214 $n1214 $ne1214 $e1214 $se1214 $s1214 $sw1214 $w1214 $nw1618 $n1618 $ne1618 $e1618 $se1618 $s1618 $sw1618 $w1618 $nw20+ $n20+ $ne20+ $e20+ $se20+ $s20+ $sw20+ $w20+ ] 'formatlist' STORE
+0 $formatlist SIZE 1 - <% 'i' STORE
+    $formatlist $i GET 'tostring' STORE
+    <' 
+      %.2f
+    '> 
+    [ $tostring ] STRINGFORMAT $formatnames $i GET STORE
+ %> FOR
 
 [
- [ '0-2 m/s' $nw02 $nnw02 $n02 $nne02 $ne02 $ene02 $e02 $ese02 $se02 $sse02 $s02 $ssw02 $sw02 $wsw02 $w02 $wnw02 ] 
- [ '2-4 m/s' $nw24 $nnw24 $n24 $nne24 $ne24 $ene24 $e24 $ese24 $se24 $sse24 $s24 $ssw24 $sw24 $wsw24 $w24 $wnw24 ]
- [ '4-6 m/s' $nw46 $nnw46 $n46 $nne46 $ne46 $ene46 $e46 $ese46 $se46 $sse46 $s46 $ssw46 $sw46 $wsw46 $w46 $wnw46 ]
- [ '6-8 m/s' $nw68 $nnw68  $n68 $nne68 $ne68 $ene68 $e68 $ese68 $se68 $sse68 $s68 $ssw68 $sw68 $wsw68 $w68 $wnw68 ]
- [ '8-10 m/s' $nw810 $nnw810 $n810 $nne810 $ne810 $ene810 $e810 $ese810 $se810 $sse810 $s810 $ssw810 $sw810 $wsw810 $w810 $wnw810 ]
- [ '10-12 m/s' $nw1012 $nnw1012 $n1012 $nne1012 $ne1012 $ene1012 $e1012 $ese1012 $se1012 $sse1012 $s1012 $ssw1012 $sw1012 $wsw1012 $w1012 $wnw1012 ]
- [ '12-14 m/s' $nw1214 $nnw1214 $n1214 $nne1214 $ne1214 $ene1214 $e1214 $ese1214 $se1214 $sse1214 $s1214 $ssw1214 $sw1214 $wsw1214 $w1214 $wnw1214 ]
- [ '14-16 m/s' $nw1416 $nnw1416 $n1416 $nne1416 $ne1416 $ene1416 $e1416 $ese1416 $se1416 $sse1416 $s1416 $ssw1416 $sw1416 $wsw1416 $w1416 $wnw1416 ]
- [ '16-18 m/s' $nw1618 $nnw1618 $n1618 $nne1618 $ne1618 $ene1618 $e1618 $ese1618 $se1618 $sse1618 $s1618 $ssw1618 $sw1618 $wsw1618 $w1618 $wnw1618 ]
- [ '18-20 m/s' $nw1820 $nnw1820 $n1820 $nne1820 $ne1820 $ene1820 $e1820 $ese1820 $se1820 $sse1820 $s1820 $ssw1820 $sw1820 $wsw1820 $w1820 $wnw1820 ]
- [ '20+ m/s' $nw20+ $nnw20+ $n20+ $nne20+ $ne20+ $ene20+ $e20+ $ese20+ $se20+ $sse20+ $s20+ $ssw20+ $sw20+ $wsw20+ $w20+ $wnw20+ ]
+ [ '0-4 m/s' $n02 $ne02 $e02 $se02 $s02 $sw02  $w02 $nw02  ] 
+ // [ '2-4 m/s' $nw24 $nnw24 $n24 $nne24 $ne24 $ene24 $e24 $ese24 $se24 $sse24 $s24 $ssw24 $sw24 $wsw24 $w24 $wnw24 ]
+ [ '4-8 m/s' $n46 $ne46 $e46 $se46 $s46 $sw46 $w46 $nw46  ]
+ // [ '6-8 m/s' $nw68 $nnw68  $n68 $nne68 $ne68 $ene68 $e68 $ese68 $se68 $sse68 $s68 $ssw68 $sw68 $wsw68 $w68 $wnw68 ]
+ [ '8-12 m/s'  $n810 $ne810 $e810 $se810 $s810 $sw810 $w810 $nw810 ]
+ // [ '10-12 m/s' $nw1012 $nnw1012 $n1012 $nne1012 $ne1012 $ene1012 $e1012 $ese1012 $se1012 $sse1012 $s1012 $ssw1012 $sw1012 $wsw1012 $w1012 $wnw1012 ]
+ [ '12-16 m/s'  $n1214 $ne1214 $e1214 $se1214 $s1214 $sw1214 $w1214 $nw1214 ]
+ // [ '14-16 m/s' $nw1416 $nnw1416 $n1416 $nne1416 $ne1416 $ene1416 $e1416 $ese1416 $se1416 $sse1416 $s1416 $ssw1416 $sw1416 $wsw1416 $w1416 $wnw1416 ]
+ [ '16-20 m/s'  $n1618 $ne1618 $e1618 $se1618 $s1618 $sw1618 $w1618 $nw1618 ]
+ // [ '18-20 m/s' $nw1820 $nnw1820 $n1820 $nne1820 $ne1820 $ene1820 $e1820 $ese1820 $se1820 $sse1820 $s1820 $ssw1820 $sw1820 $wsw1820 $w1820 $wnw1820 ]
+ [ '20+ m/s'  $n20+ $ne20+ $e20+ $se20+ $s20+ $sw20+ $w20+ $nw20+ ]
 ] 'rows' STORE
 //[ 'N' 'NNE' 'NE' 'ENE' 'E' 'ESE' 'SE' 'SSE' 'S' 'SSW' 'SW' 'WSW' 'W' 'WNW' 'NW' 'NNW' ] 'columns' STORE
-[ 'NW' 'NNW' 'N' 'NNE' 'NE' 'ENE' 'E' 'ESE' 'SE' 'SSE' 'S' 'SSW' 'SW' 'WSW' 'W' 'WNW' ] 'columns' STORE
+// [ 'NW' 'NNW' 'N' 'NNE' 'NE' 'ENE' 'E' 'ESE' 'SE' 'SSE' 'S' 'SSW' 'SW' 'WSW' 'W' 'WNW' ] 'columns' STORE
+[ 'N' 'NE' 'E' 'SE' 'S' 'SW' 'W' 'NW'  ] 'columns' STORE
      {
   'title' 'Wind rose'
   'columns'  $columns
@@ -674,7 +504,7 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
     { 
       'data' $values // data can also be a gts or a list thereof
       // 'globalParams' { 'bar' { 'stacked' true } }
-      'globalParams' { 'bar' { 'stacked' true } 'showLegend' T 'showControls' true }
+      'globalParams' { 'bar' { 'stacked' false } 'showLegend' T 'showControls' false }
     } 
 
 
@@ -699,113 +529,104 @@ $nnw20+ TODOUBLE $len / TODOUBLE 100 * 'nnw20+' STORE
          //NOW 1 d
       ] FETCH 'speed_data' STORE
 	   $speed_data { '.app' '' '.uuid' '' } RELABEL 'speed_data' STORE
-     [ $speed_data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE 
+     [ $speed_data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE 0 GET 100 * RINT 100 /
     
       %>
     }
     
      {
     'title' 'Wind Forecast'
-    'options' { 'autoRefresh' 60
+    'options' { 'autoRefresh' 600
                 'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'
 								'showRangeSelector' true
                 'showLegend' true
 
 				}
-    'x' 8 'y' 5 'w' 4 'h' 3
+    'x' 8 'y' 6 'w' 4 'h' 3
     'type' 'line' 'macro' <%
+
      NOW 1 d - 'end' STORE
      NOW 5 d - 'start' STORE
-  <% $plant 'Usak' == %> <%
-      [ $myreadtoken '~(GW_AVERAGE_WIND_SPEED|SN_AVERAGE_WIND_SPEED).*' { 'plant' $plant } 
+     <% $plant 'Usak' == %> <%
+
+       { 'token' $myreadtoken 
+      'class' 'WIND_SPEED' 
+      'labels' { 'plant' $plant } 
+      'start' $startDate
+      'end' $endDate
+      //'timespan' 7 d
+      //'sample' 0.5
+      'timestep' 10 m
+      }
+        //  [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
          //$startDate TOSTRING 
 	       //$endDate TOSTRING
-                 NOW 11 d 
+        //           NOW 11 d
 
-      ] FETCH 'speed_data' STORE
+      // ] 
+      FETCH 'speed_data' STORE
        %>
 	    <% $plant 'Yalova' == %> <% 
-       [ $myreadtoken '~(AverageWindSpeed).*' { 'plant' $plant } 
+      /*  [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
          //$startDate TOSTRING 
 	       //$endDate TOSTRING
           NOW 11 d
 
-      ] FETCH 'speed_data' STORE
+      ] */
+      { 'token' $myreadtoken 
+      'class' 'WIND_SPEED' 
+      'labels' { 'plant' $plant } 
+      'start' $startDate
+      'end' $endDate
+      //'timespan' 7 d
+      //'sample' 0.5
+      'timestep' 10 m
+      } FETCH 'speed_data' STORE
       %>
       <% $plant 'Soke' == %> <% 
-                [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
+        /*        [ $myreadtoken '~(WIND_SPEED).*' { 'plant' $plant } 
          //$startDate TOSTRING 
 	       //$endDate TOSTRING
                   NOW 11 d
 
-      ] FETCH 'speed_data' STORE
+      ] */ 
+      { 'token' $myreadtoken 
+      'class' 'WIND_SPEED' 
+      'labels' { 'plant' $plant } 
+      'start' $startDate
+      'end' $endDate 
+      // 'timespan' 7 d
+      //'sample' 0.5
+      'timestep' 10 m
+      }
+      FETCH 'speed_data' STORE
 
       %> <% %> 3 SWITCH
 
 	   $speed_data { '.app' '' '.uuid' '' 'type' '' 'plant' '' 'manufacturer' '' } RELABEL 'speed_data' STORE
-     [ $speed_data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean ] REDUCE 'data' STORE
+     [ $speed_data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean.exclude-nulls ] REDUCE 'data' STORE
 
      $data 'real' STORE
    
-  // bucketize
-[ $data bucketizer.last 0 3 h 0 ] BUCKETIZE 0 GET 'nbeats' STORE
+ [ $real bucketizer.last 0 1 h 0 ] BUCKETIZE INTERPOLATE SORT 'real' STORE
+$real 0 GET 100 * RINT 100 /
 
+  /* [ $myreadtoken '~(WIND_FORECAST).*' { 'plant' $plant } 
+         //$startDate TOSTRING 
+	       //$endDate TOSTRING
+                  NOW 1 d + 12 d
 
-// Convert the GTS of the stack to boost.py input
-{
-    'ticks' $nbeats TICKLIST // Must be in microseconds for prophet.py
-    'values' $nbeats VALUES
-    'ticks_forecast' 72 //[ $trend DUP 1 d TIMESHIFT ] TICKS
-    'input_size' 2
-    'epochs' 300
-    'freq' 'H'
-}
-
-->PICKLE
-->B64
-
-'xgb.py' CALL
-
-B64->
-PICKLE->
-
-// On top of the stack the output of prophet.py with timestamps in microseconds
-// It's a map with keys 'ticks_forecast' 'values_forecast' 'values_forecast_upper' 'values_forecast_lower'
-
-'trend_forecast' STORE
-
-// Extract forecast ticks from the output and store it.
-$trend_forecast 'ticks_forecast' REMOVE 'ticks_forecast' STORE DROP
-
-// For each remaining entry, build a GTS using ticks_forecast.
-$trend_forecast
-<%
-  [ 'key' 'value' ] STORE
-  // Make the prediction GTS
-  $ticks_forecast [] [] [] $value MAKEGTS
-  // Rename and relabel
-  [ $nbeats NAME $key 7 SUBSTRING ] '.xgb' JOIN RENAME
-  $nbeats LABELS RELABEL
-%>
-FOREACH 'prediction' STORE
-
-[ $prediction bucketizer.last 0 1 h 0 ] BUCKETIZE INTERPOLATE SORT 'prediction' STORE
-
-$prediction
-[ $real bucketizer.last 0 1 h 0 ] BUCKETIZE INTERPOLATE SORT 'real' STORE
-$real
-
-// calculate mape 
-
-$real 0 GET SIZE 'sample_size' STORE
-
-$real 0 GET $prediction 0 GET - ABS $real 0 GET ABS / 100 * 'mean_error' STORE
-
-1 TODOUBLE $sample_size / 'sample_coeff' STORE
-
-$mean_error $sample_coeff * 'absolute_percent_error' STORE
-
-[ $absolute_percent_error bucketizer.mean 0 0 1 ] BUCKETIZE 'absolute_percent_error' STORE
+      ] */  
+      { 'token' $myreadtoken 
+      'class' 'WIND_FORECAST.xgb' 
+      'labels' { 'plant' $plant } 
+      'start' $startDate
+      'end' $endDate 1 d + 
+      // 'timespan' 7 d
+      //'sample' 0.5
+      'timestep' 10 m
+      } FETCH  { '.app' '' '.uuid' '' 'type' '' 'manufacturer' '' } RELABEL 'forecast_data' STORE
+      $forecast_data -3 h TIMESHIFT 0 GET 100 * RINT 100 /
 
     
       %>
@@ -854,8 +675,8 @@ $mean_error $sample_coeff * 'absolute_percent_error' STORE
 	      $endDate TOSTRING
          //NOW 610 d 
           ] FETCH 'g' STORE
-	  $g { '.app' '' '.uuid' '' } RELABEL 'g' STORE //relabel the atributes
-	    [ $g bucketizer.mean 0 0 1 ] BUCKETIZE 'g' STORE
+	  $g { '.app' '' '.uuid' '' } RELABEL  'g' STORE //relabel the atributes
+	    [ $g bucketizer.mean 0 0 1 ] BUCKETIZE  <% 100 * RINT 100 / %> FOREACH STACKTOLIST 'g' STORE
 	  $g MERGE 'speeds' RENAME 'speeds' STORE
     $speeds VALUES FLATTEN MAX 'max' STORE
       

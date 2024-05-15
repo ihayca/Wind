@@ -1,0 +1,65 @@
+// store tokens
+'4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+'myreadtoken' STORE
+'VLMWo2sl_0j0ml.KHLpaa7lr14wLn_fAffcp.pGvv989p7MFOcyR9yF.nOrDqB2jgNR1iN93WCYav0lawYiRt0zuNWvDJhBeaVEzlGwVNBeIlRkhkv1OpUYymIiUZYMR' 'writetoken' STORE
+
+    
+ [ $myreadtoken '~(WIND_SPEED).*' { 'plant' 'Soke' } 
+         //$startDate TOSTRING 
+	       //$endDate TOSTRING
+          NOW 11 d
+
+      ] FETCH 'speed_data' STORE
+ 
+	   $speed_data { '.app' '' '.uuid' '' 'type' '' 'manufacturer' '' } RELABEL 'speed_data' STORE
+     [ $speed_data bucketizer.last 0 10 m 0 ] BUCKETIZE [ SWAP [] reducer.mean.exclude-nulls ] REDUCE 'data' STORE
+
+  // bucketize
+[ $data bucketizer.last 0 3 h 0 ] BUCKETIZE 0 GET 'nbeats' STORE
+
+
+// Convert the GTS of the stack to boost.py input
+{
+    'ticks' $nbeats TICKLIST // Must be in microseconds for prophet.py
+    'values' $nbeats VALUES
+    'ticks_forecast' 72 //[ $trend DUP 1 d TIMESHIFT ] TICKS
+    'input_size' 2
+    'epochs' 300
+    'freq' 'H'
+}
+
+->PICKLE
+->B64
+
+'xgb.py' CALL
+
+B64->
+PICKLE->
+
+// On top of the stack the output of prophet.py with timestamps in microseconds
+// It's a map with keys 'ticks_forecast' 'values_forecast' 'values_forecast_upper' 'values_forecast_lower'
+
+'trend_forecast' STORE
+
+// Extract forecast ticks from the output and store it.
+$trend_forecast 'ticks_forecast' REMOVE 'ticks_forecast' STORE DROP
+
+// For each remaining entry, build a GTS using ticks_forecast.
+$trend_forecast
+<%
+  [ 'key' 'value' ] STORE
+  // Make the prediction GTS
+  $ticks_forecast [] [] [] $value MAKEGTS
+  // Rename and relabel
+  [ $nbeats NAME $key 7 SUBSTRING ] '.xgb' JOIN RENAME
+  $nbeats LABELS RELABEL
+%>
+FOREACH 'prediction' STORE
+
+[ $prediction bucketizer.last 0 1 h 0 ] BUCKETIZE INTERPOLATE SORT 'prediction' STORE
+
+$prediction FIRSTTICK 'start' STORE
+$prediction FIRSTTICK 1 d + 'end' STORE
+$prediction $end $start TIMECLIP 'WIND_FORECAST.xgb' RENAME  $writetoken UPDATE
+
+  

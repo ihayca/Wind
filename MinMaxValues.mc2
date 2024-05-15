@@ -1,8 +1,8 @@
 // @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
-// @theme light
+// @theme dark-blue
 {
 
- 'title' 'Time Difference'
+ 'title' 'Min-Max Values'
   'cellHeight' 100   
   'options' { 
     'showErrors' true  'eventHandler' 'type=popup,tag=dashboard'
@@ -16,8 +16,9 @@
       'TurbineId' '1'
 
       
-      'startDate' 1658308294000000   
-      'endDate' 1658913094000000   //604800000000
+      'startDate' [ NOW 1 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
+      'endDate' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP // NOW //1658913094000000 //604800000000
+
       'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
           }
           
@@ -27,11 +28,11 @@
 		
 
 {                
-        'title' 'Plant 1'                
+        'title' 'Plant'                
         'x' 0 'y' 0 'w' 2 'h' 1                
         'type' 'input:list'                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
             {                        
                 'data' $listOfPlants                        
                 'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
@@ -41,11 +42,12 @@
 		
     }  
 	{                
-        'title' 'Turbine 1'                
+        'title' 'Turbine'
+        'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|TurbineId2|plant|plant2)' }                
         'x' 2 'y' 0 'w' 2 'h' 1              
         'type' 'input:list'                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                      
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
@@ -58,12 +60,13 @@
 	
 	{                
         'title' 'Start Date'                
-        'x' 4 'y' 0 'w' 2 'h' 1              
+        'x' 4 'y' 0 'w' 3 'h' 1 
+        'options' { 'input' { 'showButton' true } }             
         'type' 'input:date'                
         'macro' <%                     
                               
             {                        
-                'data' [ NOW 1 w - NOW  ]                        
+                'data' $startDate //[ NOW 1 w - NOW  ]                        
                 'events' [
     { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
     ]                    
@@ -73,12 +76,13 @@
 	
 	{                
         'title' 'End  Date'                
-        'x' 6 'y' 0 'w' 2 'h' 1              
+        'x' 7 'y' 0 'w' 3 'h' 1 
+        'options' { 'input' { 'showButton' true } }                  
         'type' 'input:date'                
         'macro' <%                     
                               
             {                        
-                'data' [ NOW  ]                        
+                'data' $endDate // [ NOW  ]                        
                 'events' [
     { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
     ]                    
@@ -88,7 +92,7 @@
 
  {
       'type' 'tabular' 'x' 0 'y' 1 'w' 12 'h' 8
-      'title' 'Time Difference Table'
+      'title' 'Min-Max Values Table'
       'options' { 'eventHandler' 'type=(variable),tag=(startDate|endDate|TurbineId|TurbineId2|plant|plant2)'
                   // suscribe to events
                   'showLoader' true
@@ -101,21 +105,21 @@
       ] FETCH 'data' STORE
 	   $data { '.app' '' '.uuid' '' } RELABEL 'data' STORE //relabel the atributes --- this is the data to train on
      //bucketize so all signals are aligned
-     [ $data bucketizer.last 0 0 1 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'lastbucket' STORE
-     [ $data bucketizer.first 0 0 1 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'firstbucket' STORE
+     [ $data bucketizer.max 0 0 1 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'lastbucket' STORE
+     [ $data bucketizer.min 0 0 1 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'firstbucket' STORE
        $firstbucket SIZE 1 - 'length_of_variables' STORE
 
              {
-          'columns' [ 'Variable' 'First Value' 'Last Value' 'Difference' ]
+          'columns' [ 'Variable' 'Min Value' 'Max Value' ]
           'rows' [
  0 $length_of_variables
 <%
   'i' STORE
   $lastbucket $i GET NAME 'variableName' STORE
-  $firstbucket $i GET VALUES 0 GET 'firstvalue' STORE
-  $lastbucket $i GET VALUES 0 GET 'lastvalue' STORE
-  $lastvalue $firstvalue - 'diff' STORE
-  [ $variableName $firstvalue $lastvalue $diff ]
+  $firstbucket $i GET 100.0 * RINT 100.0 /  VALUES 0 GET 'firstvalue' STORE
+  $lastbucket $i GET 100.0 * RINT 100.0 /  VALUES 0 GET 'lastvalue' STORE
+  //$lastvalue $firstvalue - 'diff' STORE
+  [ $variableName $firstvalue $lastvalue ] //$diff ]
 %> FOR         
           ]
         } 

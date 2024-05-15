@@ -1,0 +1,1523 @@
+// @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
+// @theme dark-blue
+{
+
+ 'title' 'Availabilities'
+  'cellHeight' 100   
+  'options' { 
+    'showLoader' true
+    'showErrors' true  'eventHandler' 'type=popup,tag=dashboard'
+      'scheme' 'CHARTANA'
+            'timeZone' 'AUTO'      
+         }
+		 
+  'vars' {
+      'plant' 'Yalova'
+      
+      'TurbineId' '1'
+
+      
+      'startDate' NOW 6 h - // [ NOW 1 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //NOW 7 d - // 1658308294000000 // NOW 
+      'endDate'  NOW //[ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP // NOW //1658913094000000 //604800000000
+
+      'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
+          }
+          
+          
+  'tiles' [
+    	
+//Site selection
+   {                
+    'title' 'Plant'                
+    'x' 0 'y' 0 'w' 2 'h' 1                
+    'type' 'input:list'                
+    'macro' 
+     <%                     
+      [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+      {                        
+        'data' $listOfPlants                        
+        'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
+        'events' [ { 'type' 'variable' 'tags' [ 'plant' ] 'selector' 'plant' }  ] // Event definition to send selected variable to tiles                    
+      }                
+      %>  
+		
+    }
+
+ {                
+        'title' 'Select Year'                
+        'x' 2 'y' 0 'w' 3 'h' 1 
+        'options' { 'input' { 'showButton' true } }             
+        'type' 'input:date'                
+        'macro' <%                     
+                              
+            {                        
+                'data' $startDate //[ NOW 1 w - NOW  ]                        
+                'events' [
+    { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
+    ]                    
+            }                
+        %>            
+    } 
+	
+
+// Turbine Table
+
+    {
+      'type' 'tabular' 'x' 0 'y' 1 'w' 4 'h' 7
+      'title' 'Time Availabilities'
+      'options' { //'autoRefresh' 600
+      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
+      'showControls' true
+                        }
+      'macro' <%
+
+       NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thisyear' STORE //adjust 3 hrs for UTC time Turkey
+      $year 1 - 'last_year' STORE
+      [ $last_year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyear' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year $month $day $hour 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyeartoday' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year 12 31 23 59 59 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearend' STORE //adjust 3 hrs for UTC time Turkey
+
+
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
+
+
+$listOfTurbines SIZE 'numTurbines' STORE
+    [] 'turbinerows' STORE
+
+    1 $numTurbines <% 'turbine' STORE
+    [ $turbine ] 'turbinerow' STORE 
+
+     { 'token' $myreadtoken 
+      'class' 'PLC_STATUS' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH [ SWAP bucketizer.last 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'status' STORE 
+        [ $status bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'totaltime' STORE 
+        //[ $status bucketizer.count NOW 'P1M' 0 ] BUCKETIZE.CALENDAR VALUES FLATTEN 'totaltime' STORE //bucketize each month
+       
+       $status 0 GET LABELS  'manufacturer' GET  'manu' STORE
+       <% $manu 'Sinovel' == %> <%
+         [ $status  []  { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER [ SWAP 2 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'prod' STORE
+         [ $status  []  { 'manufacturer' 'Sinovel' } filter.bylabels ] FILTER [ SWAP 1 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'standby' STORE
+      
+        $totaltime TICKLIST 'monthindex' STORE
+       0 $monthindex SIZE 1 - <% 'i' STORE
+       $monthindex $i GET 'index' STORE
+       //$prod $i GET TODOUBLE $standby $i GET TODOUBLE + $totaltime $i GET / TODOUBLE 100 * 100 * RINT 100 / 
+       $totaltime $index ATTICK -1 GET 'totalmonth' STORE
+       $prod $index ATTICK -1 GET 'prodmonth' STORE 
+       $standby $index ATTICK -1 GET 'standbymonth' STORE
+       <% $prodmonth ISNULL %> <% 0 'prodmonth' STORE %> IFT 
+       <% $standbymonth ISNULL %> <% 0 'standbymonth' STORE %> IFT
+       $prodmonth $standbymonth + TODOUBLE $totalmonth / TODOUBLE 100 * 100 * RINT 100 / 
+   //       TOLONG STOP $i GET TODOUBLE $totaltime $i GET / TODOUBLE 100 * 100 * RINT 100 /
+        %> FOR  STACKTOLIST  'avails' STORE
+        $turbinerow $avails APPEND 'turbinerow' STORE
+       
+       %> 
+
+         <% $manu 'Vestas' == %> <%
+         [ $status  []  { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER [ SWAP 2 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'vsprod' STORE
+         [ $status  []  { 'manufacturer' 'Vestas' } filter.bylabels ] FILTER [ SWAP 3 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'vsstandby' STORE
+       
+    $totaltime TICKLIST 'monthindex' STORE
+       0 $monthindex SIZE 1 - <% 'i' STORE
+       $monthindex $i GET 'index' STORE
+       //$prod $i GET TODOUBLE $standby $i GET TODOUBLE + $totaltime $i GET / TODOUBLE 100 * 100 * RINT 100 / 
+       $totaltime $index ATTICK -1 GET 'totalmonth' STORE
+       $vsprod $index ATTICK -1 GET 'vsprodmonth' STORE 
+       $vsstandby $index ATTICK -1 GET 'vsstandbymonth' STORE
+       <% $vsprodmonth ISNULL %> <% 0 'vsprodmonth' STORE %> IFT 
+       <% $vsstandbymonth ISNULL %> <% 0 'vsstandbymonth' STORE %> IFT
+       $vsprodmonth $vsstandbymonth + TODOUBLE $totalmonth / TODOUBLE 100 * 100 * RINT 100 /  
+        %> FOR STACKTOLIST 'avails' STORE
+        $turbinerow $avails APPEND 'turbinerow' STORE
+       
+       %> 
+       
+             <% $manu 'Goldwind' == %> <%
+         [ $status  []  { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER [ SWAP 2 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'gwstandby' STORE
+         [ $status  []  { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER [ SWAP 3 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'gwstart' STORE
+         [ $status  []  { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER [ SWAP 4 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'gwrun' STORE
+         [ $status  []  { 'manufacturer' 'Goldwind' } filter.bylabels ] FILTER [ SWAP 5 mapper.eq 0 0 0 ] MAP [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET 'gwprod' STORE
+       
+       $totaltime TICKLIST 'monthindex' STORE
+       0 $monthindex SIZE 1 - <% 'i' STORE
+       $monthindex $i GET 'index' STORE
+       //$prod $i GET TODOUBLE $standby $i GET TODOUBLE + $totaltime $i GET / TODOUBLE 100 * 100 * RINT 100 / 
+       $totaltime $index ATTICK -1 GET 'totalmonth' STORE
+       $gwprod $index ATTICK -1 GET 'gwprodbymonth' STORE 
+       $gwstandby $index ATTICK -1 GET 'gwstandbymonth' STORE
+        $gwstart $index ATTICK -1 GET 'gwstartbymonth' STORE 
+       $gwrun $index ATTICK -1 GET 'gwrunbymonth' STORE
+       <% $gwprodbymonth ISNULL %> <% 0 'gwprodbymonth' STORE %> IFT 
+       <% $gwstartbymonth ISNULL %> <% 0 'gwstartbymonth' STORE %> IFT
+       <% $gwstandbymonth ISNULL %> <% 0 'gwstandbymonth' STORE %> IFT
+       <% $gwrunbymonth ISNULL %> <% 0 'gwrunbymonth' STORE %> IFT
+       $gwprodbymonth $gwstartbymonth + $gwstandbymonth + $gwrunbymonth + TODOUBLE $totalmonth / TODOUBLE 100 * 100 * RINT 100 /  
+
+       //$gwprod $i GET TODOUBLE $gwstandby $i GET TODOUBLE + $gwstart $i GET TODOUBLE + $gwrun $i GET TODOUBLE + $totaltime $i GET / TODOUBLE 100 * 100 * RINT 100 /  
+        %> FOR STACKTOLIST 'avails' STORE
+        $turbinerow $avails APPEND 'turbinerow' STORE
+       
+       %> 
+       <% %> 3 SWITCH
+      
+       
+      $turbinerows [ $turbinerow ] APPEND 'turbinerows' STORE
+
+       %> FOR // for all turbine list
+    
+
+  [ 'Turbine' ] 'columns' STORE
+   
+   1 $turbinerows 0 GET SIZE 1 - <% 't' STORE
+     $columns $t + 'columns' STORE
+    %> FOR
+
+      // calculate general availability and add as a row.
+[] 'total' STORE
+ 1 $turbinerows 0 GET SIZE <% DROP $total [ 0 ] APPEND 'total' STORE %> FOR
+
+$total ->VEC 'totalvec' STORE
+
+0 $turbinerows SIZE 1 - <% 'i' STORE 
+
+  <% $turbinerows $i GET  SIZE $total SIZE == %>
+  <%  $turbinerows $i GET ->VEC $totalvec + 'totalvec' STORE %> 
+  <% $turbinerows $i GET [ 1 -1 ] SUBLIST REVERSE [ 0 0  $turbinerows $i GET 0 GET ] APPEND REVERSE ->VEC $totalvec + 'totalvec' STORE %> IFTE
+
+ 
+ %> FOR 
+ $totalvec $turbinerows SIZE / VEC-> <% 100 * RINT 100 / %> FOREACH STACKTOLIST 'Total' 0 SET 'totalrow' STORE 
+
+ $turbinerows [ $totalrow ] APPEND 'turbinerows' STORE
+
+
+ //create rows for table
+ 
+  [] 'rows' STORE
+   0 $turbinerows SIZE 1 - <% 'j' STORE
+       <% $columns SIZE $turbinerows $j GET SIZE == %> 
+   <% $rows [ $turbinerows $j GET ] APPEND 'rows' STORE %>
+   <% $turbinerows $j GET [ 1 -1 ] SUBLIST REVERSE [ "0" "0"  $turbinerows $j GET 0 GET ] APPEND  REVERSE 'newrow' STORE
+   $rows [ $newrow ] APPEND 'rows' STORE  %> IFTE
+    
+    //$rows [ $turbinerows $j GET ] APPEND 'rows' STORE
+          %> FOR
+
+
+   {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+    
+        { 'data' $values
+        'events' [ { 'type' 'variable' 'tags' [ 'timeavail' ] 'value' $values } ] 
+          'globalParams' {
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
+            'responsive' true
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+         {
+           'title' 'Download Time Availabilities'
+           'type' 'display'
+           'cellHeight' 50
+           'options' { 'eventHandler' 'type=variable,tag=timeavail' }
+           'x' 0 'y' 8 'w' 4 'h' 1
+           'macro' <%
+
+                <'
+                    fileName = "TimeAvail.csv";
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += {{{jsonHeader}}}.join(";") + "\r\n";
+        
+                    {{{jsonRow}}}.forEach(function(rowArray) {
+                    let row = rowArray.join(";");
+                    csvContent += row + "\r\n";
+                    }); 
+                    
+                    var dataUri = encodeURI(csvContent);
+
+
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                            
+                '>
+
+                {
+                    "jsonRow" $rows ->JSON
+                    "jsonHeader" $columns ->JSON
+                } TEMPLATE 
+
+                'download_script_js' STORE
+                
+
+                <'
+
+                    <button style='background-color: DodgerBlue;' onclick='{{download_script_js}}' >Download</button> 
+   
+                '>
+
+
+                {
+                    'download_script_js' $download_script_js
+                } TEMPLATE 
+
+                
+           %>
+       }
+
+
+
+ {
+      'type' 'tabular' 'x' 4 'y' 1 'w' 4 'h' 7
+      'title' 'Contractual Availabilities'
+      'options' { //'autoRefresh' 600
+      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
+      'showControls' true
+                        }
+      'macro' <%
+
+            NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thisyear' STORE //adjust 3 hrs for UTC time Turkey
+      $year 1 - 'last_year' STORE
+      [ $last_year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyear' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year $month $day $hour 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyeartoday' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year 12 31 23 59 59 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearend' STORE //adjust 3 hrs for UTC time Turkey
+
+
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
+
+
+$listOfTurbines SIZE 'numTurbines' STORE
+    [] 'turbinerows' STORE
+
+    1 $numTurbines <% 'turbine' STORE
+    [ $turbine ] 'turbinerow' STORE 
+
+     { 'token' $myreadtoken 
+      'class' 'PLC_STATUS' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH [ SWAP bucketizer.last 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'status' STORE 
+        [ $status bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET  'totaltime' STORE 
+        //[ $status bucketizer.count NOW 'P1M' 0 ] BUCKETIZE.CALENDAR VALUES FLATTEN 'totaltime' STORE //bucketize each month
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS_REPORT' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH 'reports' STORE
+       
+     [ $reports  []  { 'origin' 'Manufacturer' 'service_type' 'Error' } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth  'manerror' STORE
+     [ $reports  []  { 'origin' 'Manufacturer' 'service_type' 'Service' } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth   'manservice' STORE
+          
+       $totaltime TICKLIST  'monthindex' STORE // index of months 
+       0 $monthindex SIZE 1 - <% 'i' STORE
+       $monthindex $i GET  'index' STORE
+       $totaltime $index ATTICK  -1 GET TODOUBLE 'totalmonth' STORE //total minutes in month
+
+      <% $manerror [] == %> <% 0 'errormonth' STORE %> 
+      <%  
+      $manerror $index 1 TIMECLIP  NONEMPTY   <% LABELS 'tduration' GET TODOUBLE 60000000 / %> FOREACH  STACKTOLIST  'errorlist' STORE 
+      <% $errorlist [] ==  %> <% 0  'errormonth' STORE %>
+      <% 0 'errormonth' STORE 0 $errorlist SIZE 1 - <% 'e' STORE $errormonth $errorlist $e GET TODOUBLE +  'errormonth' STORE  %> FOR %> IFTE  
+      %> IFTE  //if no man error 
+
+      <% $manservice [] == %> <% 0 'servicemonth' STORE %> 
+      <%  
+      $manservice $index 1 TIMECLIP NONEMPTY  <% LABELS 'tduration' GET TODOUBLE 60000000 / %> FOREACH STACKTOLIST 'servicelist' STORE 
+      <% $servicelist [] == %> <% 0 'servicemonth' STORE %>
+      <% 0 'servicemonth' STORE 0 $servicelist SIZE 1 - <% 'e' STORE $servicemonth $servicelist $e GET TODOUBLE + 'servicemonth' STORE  %> FOR %> IFTE 
+      %> IFTE  //if no man error 
+
+      $totalmonth  $errormonth  $servicemonth  + -  TODOUBLE  $totalmonth /  100 * 100 * RINT 100 /  STACKTOLIST 'avails' STORE
+      $turbinerow $avails APPEND  'turbinerow' STORE
+
+       %> FOR  
+      
+        
+        $turbinerows [ $turbinerow ] APPEND 'turbinerows' STORE
+   
+
+       %> FOR // for all turbine list
+  
+
+  [ 'Turbine' ] 'columns' STORE
+   
+   1 $turbinerows 0 GET SIZE 1 - <% 't' STORE
+     $columns $t + 'columns' STORE
+    %> FOR
+  
+      // calculate general availability and add as a row.
+[] 'total' STORE
+ 1 $turbinerows 0 GET SIZE <% DROP $total [ 0 ] APPEND 'total' STORE %> FOR
+
+$total ->VEC 'totalvec' STORE
+
+0 $turbinerows SIZE 1 - <% 'i' STORE 
+
+  <% $turbinerows $i GET  SIZE $total SIZE == %>
+  <%  $turbinerows $i GET ->VEC $totalvec + 'totalvec' STORE %> 
+  <% $turbinerows $i GET [ 1 -1 ] SUBLIST REVERSE [ 0 0  $turbinerows $i GET 0 GET ] APPEND REVERSE ->VEC $totalvec + 'totalvec' STORE %> IFTE
+
+ 
+ %> FOR 
+ $totalvec $turbinerows SIZE / VEC-> <% 100 * RINT 100 / %> FOREACH STACKTOLIST 'Total' 0 SET 'totalrow' STORE 
+
+ $turbinerows [ $totalrow ] APPEND 'turbinerows' STORE
+
+
+ //create rows for table
+ 
+  [] 'rows' STORE
+   0 $turbinerows SIZE 1 - <% 'j' STORE
+       <% $columns SIZE $turbinerows $j GET SIZE == %> 
+   <% $rows [ $turbinerows $j GET ] APPEND 'rows' STORE %>
+   <% $turbinerows $j GET [ 1 -1 ] SUBLIST REVERSE [ "0" "0"  $turbinerows $j GET 0 GET ] APPEND  REVERSE 'newrow' STORE
+   $rows [ $newrow ] APPEND 'rows' STORE  %> IFTE
+    
+    //$rows [ $turbinerows $j GET ] APPEND 'rows' STORE
+          %> FOR
+
+
+   {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+
+        { 'data' $values 
+         'events' [ { 'type' 'variable' 'tags' [ 'contractavail' ] 'value' $values } ] 
+
+          'globalParams' {
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+             {
+           'title' 'Download Contract Availability'
+           'type' 'display'
+           'cellHeight' 50
+           'options' { 'eventHandler' 'type=variable,tag=contractavail' }
+           'x' 4 'y' 8 'w' 4 'h' 1
+           'macro' <%
+
+                <'
+                    fileName = "ContractAvail.csv";
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += {{{jsonHeader}}}.join(";") + "\r\n";
+        
+                    {{{jsonRow}}}.forEach(function(rowArray) {
+                    let row = rowArray.join(";");
+                    csvContent += row + "\r\n";
+                    }); 
+                    
+                    var dataUri = encodeURI(csvContent);
+
+
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                            
+                '>
+
+                {
+                    "jsonRow" $rows ->JSON
+                    "jsonHeader" $columns ->JSON
+                } TEMPLATE 
+
+                'download_script_js' STORE
+                
+
+                <'
+
+                    <button style='background-color: DodgerBlue;' onclick='{{download_script_js}}' >Download</button> 
+   
+                '>
+
+
+                {
+                    'download_script_js' $download_script_js
+                } TEMPLATE 
+
+                
+           %>
+       }
+
+
+{
+      'type' 'tabular' 'x' 8 'y' 1 'w' 4 'h' 7
+      'title' 'Aydem Availabilities'
+      'options' { //'autoRefresh' 600
+      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
+      'showControls' true
+                        }
+      'macro' <%
+
+            NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thisyear' STORE //adjust 3 hrs for UTC time Turkey
+      $year 1 - 'last_year' STORE
+      [ $last_year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyear' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year $month $day $hour 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyeartoday' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year 12 31 23 59 59 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearend' STORE //adjust 3 hrs for UTC time Turkey
+
+
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
+
+
+$listOfTurbines SIZE 'numTurbines' STORE
+    [] 'turbinerows' STORE
+
+    1 $numTurbines <% 'turbine' STORE
+    [ $turbine ] 'turbinerow' STORE 
+
+     { 'token' $myreadtoken 
+      'class' 'PLC_STATUS' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH [ SWAP bucketizer.last 0 1 m 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT 'status' STORE 
+        [ $status bucketizer.count '+03:00' ] @warp/bucketByMonth 0 GET  'totaltime' STORE 
+        //[ $status bucketizer.count NOW 'P1M' 0 ] BUCKETIZE.CALENDAR VALUES FLATTEN 'totaltime' STORE //bucketize each month
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS_REPORT' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH 'reports' STORE
+       
+   [ $reports  []  { 'origin' 'Buyer' } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth  'buyerror' STORE
+          
+       $totaltime TICKLIST  'monthindex' STORE // index of months 
+       0 $monthindex SIZE 1 - <% 'i' STORE
+       $monthindex $i GET  'index' STORE
+       $totaltime $index ATTICK  -1 GET TODOUBLE 'totalmonth' STORE //total minutes in month
+
+      <% $buyerror [] == %> <% 0 'errormonth' STORE %> 
+      <%  
+      $buyerror $index 1 TIMECLIP  NONEMPTY   <% LABELS 'tduration' GET TODOUBLE 60000000 / %> FOREACH  STACKTOLIST  'errorlist' STORE 
+      <% $errorlist [] ==  %> <% 0  'errormonth' STORE %>
+      <% 0 'errormonth' STORE 0 $errorlist SIZE 1 - <% 'e' STORE $errormonth $errorlist $e GET TODOUBLE +  'errormonth' STORE  %> FOR %> IFTE  
+      %> IFTE  //if no man error 
+
+      $totalmonth  $errormonth -  TODOUBLE  $totalmonth /  100 * 100 * RINT 100 /  STACKTOLIST 'avails' STORE
+      $turbinerow $avails APPEND  'turbinerow' STORE
+
+       %> FOR  
+      
+        
+        $turbinerows [ $turbinerow ] APPEND 'turbinerows' STORE
+   
+
+       %> FOR // for all turbine list
+  
+
+  [ 'Turbine' ] 'columns' STORE
+   
+   1 $turbinerows 0 GET SIZE 1 - <% 't' STORE
+     $columns $t + 'columns' STORE
+    %> FOR
+  
+      // calculate general availability and add as a row.
+[] 'total' STORE
+ 1 $turbinerows 0 GET SIZE <% DROP $total [ 0 ] APPEND 'total' STORE %> FOR
+
+$total ->VEC 'totalvec' STORE
+
+0 $turbinerows SIZE 1 - <% 'i' STORE 
+
+  <% $turbinerows $i GET  SIZE $total SIZE == %>
+  <%  $turbinerows $i GET ->VEC $totalvec + 'totalvec' STORE %> 
+  <% $turbinerows $i GET [ 1 -1 ] SUBLIST REVERSE [ 0 0  $turbinerows $i GET 0 GET ] APPEND REVERSE ->VEC $totalvec + 'totalvec' STORE %> IFTE
+
+ 
+ %> FOR 
+ $totalvec $turbinerows SIZE / VEC-> <% 100 * RINT 100 / %> FOREACH STACKTOLIST 'Total' 0 SET 'totalrow' STORE 
+
+ $turbinerows [ $totalrow ] APPEND 'turbinerows' STORE
+
+
+ //create rows for table
+ 
+  [] 'rows' STORE
+   0 $turbinerows SIZE 1 - <% 'j' STORE
+       <% $columns SIZE $turbinerows $j GET SIZE == %> 
+   <% $rows [ $turbinerows $j GET ] APPEND 'rows' STORE %>
+   <% $turbinerows $j GET [ 1 -1 ] SUBLIST REVERSE [ "0" "0"  $turbinerows $j GET 0 GET ] APPEND  REVERSE 'newrow' STORE
+   $rows [ $newrow ] APPEND 'rows' STORE  %> IFTE
+    
+    //$rows [ $turbinerows $j GET ] APPEND 'rows' STORE
+          %> FOR
+
+
+   {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+
+        { 'data' $values 
+                 'events' [ { 'type' 'variable' 'tags' [ 'aydemavail' ] 'value' $values } ] 
+
+          'globalParams' {
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+             {
+           'title' 'Download Aydem Availabilities'
+           'type' 'display'
+           'cellHeight' 50
+           'options' { 'eventHandler' 'type=variable,tag=aydemavail' }
+           'x' 8 'y' 8 'w' 4 'h' 1
+           'macro' <%
+
+                <'
+                    fileName = "AydemAvail.csv";
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += {{{jsonHeader}}}.join(";") + "\r\n";
+        
+                    {{{jsonRow}}}.forEach(function(rowArray) {
+                    let row = rowArray.join(";");
+                    csvContent += row + "\r\n";
+                    }); 
+                    
+                    var dataUri = encodeURI(csvContent);
+
+
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                            
+                '>
+
+                {
+                    "jsonRow" $rows ->JSON
+                    "jsonHeader" $columns ->JSON
+                } TEMPLATE 
+
+                'download_script_js' STORE
+                
+
+                <'
+
+                    <button style='background-color: DodgerBlue;' onclick='{{download_script_js}}' >Download</button> 
+   
+                '>
+
+
+                {
+                    'download_script_js' $download_script_js
+                } TEMPLATE 
+
+                
+           %>
+       }
+
+
+
+{
+      'type' 'tabular' 'x' 0 'y' 9 'w' 4 'h' 7
+      'title' 'Energy Availabilities'
+      'options' { //'autoRefresh' 600
+      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
+      'showControls' true
+                        }
+      'macro' <%
+
+            NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thisyear' STORE //adjust 3 hrs for UTC time Turkey
+      $year 1 - 'last_year' STORE
+      [ $last_year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyear' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year $month $day $hour 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyeartoday' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year 12 31 23 59 59 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearend' STORE //adjust 3 hrs for UTC time Turkey
+
+
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
+
+
+$listOfTurbines SIZE 'numTurbines' STORE
+    [] 'turbinerows' STORE
+
+    1 $numTurbines <% 'turbine' STORE
+    [ $turbine ] 'turbinerow' STORE 
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 h
+      }
+       FETCH [ SWAP bucketizer.last 0 1 h 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT   'status' STORE 
+        [ $status bucketizer.count '+03:00' ] @warp/bucketByMonth  0 GET  'totaltime' STORE 
+        //[ $status bucketizer.count NOW 'P1M' 0 ] BUCKETIZE.CALENDAR VALUES FLATTEN 'totaltime' STORE //bucketize each month
+        $totaltime LABELS 'manufacturer' GET  'manu' STORE
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS_REPORT' 
+      'labels' { 'plant' $plant  'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH  'reports' STORE
+       
+   [ $reports  []  { } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth  'buyerror' STORE
+          
+       $totaltime TICKLIST  'monthindex' STORE // index of months 
+       0 $monthindex SIZE 1 - <% 
+        'i' STORE
+       $monthindex $i GET  'index' STORE
+       <% 'Sinovel' $manu == %> 
+       <% 30 24 * 1500 *  'totalmonth' STORE %> IFT
+      <% 'Vestas' $manu == %> 
+       <% 30 24 * 3450 * 'totalmonth' STORE %> IFT
+        <% 'Goldwind' $manu == %> 
+       <% 30 24 * 6000 * 'totalmonth' STORE %> IFT
+
+      <% $buyerror [] == %> <% 0 'errormonth' STORE %> 
+      <%  
+      $buyerror $index 1 TIMECLIP NONEMPTY  <% LABELS 'lost_power' GET 'k' SPLIT 0 GET TODOUBLE %> FOREACH  STACKTOLIST  'errorlist' STORE 
+      <% $errorlist [] ==  %> <% 0  'errormonth' STORE %>
+      <% 0 'errormonth' STORE 0 $errorlist SIZE 1 - <% 'e' STORE $errormonth $errorlist $e GET TODOUBLE +  'errormonth' STORE  %> FOR %> IFTE  
+      %> IFTE  //if no man error 
+
+      $totalmonth  $errormonth -  TODOUBLE  $totalmonth /  100 * 100 * RINT 100 /  STACKTOLIST 'avails' STORE
+      $turbinerow $avails APPEND  'turbinerow' STORE
+
+       %> FOR  
+      
+        
+        $turbinerows [ $turbinerow ] APPEND 'turbinerows' STORE
+   
+
+       %> FOR // for all turbine list
+  
+
+  [ 'Turbine' ] 'columns' STORE
+   
+   1 $turbinerows 0 GET SIZE 1 - <% 't' STORE
+     $columns $t + 'columns' STORE
+    %> FOR
+  
+      // calculate general availability and add as a row.
+[] 'total' STORE
+ 1 $turbinerows 0 GET SIZE <% DROP $total [ 0 ] APPEND 'total' STORE %> FOR
+
+$total ->VEC 'totalvec' STORE
+
+0 $turbinerows SIZE 1 - <% 'i' STORE 
+
+  <% $turbinerows $i GET  SIZE $total SIZE == %>
+  <%  $turbinerows $i GET ->VEC $totalvec + 'totalvec' STORE %> 
+  <% $turbinerows $i GET [ 1 -1 ] SUBLIST REVERSE [ 0 0  $turbinerows $i GET 0 GET ] APPEND REVERSE ->VEC $totalvec + 'totalvec' STORE %> IFTE
+
+ 
+ %> FOR 
+ $totalvec $turbinerows SIZE / VEC-> <% 100 * RINT 100 / %> FOREACH STACKTOLIST 'Total' 0 SET 'totalrow' STORE 
+
+ $turbinerows [ $totalrow ] APPEND 'turbinerows' STORE
+
+
+ //create rows for table
+ 
+  [] 'rows' STORE
+   0 $turbinerows SIZE 1 - <% 'j' STORE
+       <% $columns SIZE $turbinerows $j GET SIZE == %> 
+   <% $rows [ $turbinerows $j GET ] APPEND 'rows' STORE %>
+   <% $turbinerows $j GET [ 1 -1 ] SUBLIST REVERSE [ "0" "0"  $turbinerows $j GET 0 GET ] APPEND  REVERSE 'newrow' STORE
+   $rows [ $newrow ] APPEND 'rows' STORE  %> IFTE
+    
+    //$rows [ $turbinerows $j GET ] APPEND 'rows' STORE
+          %> FOR
+
+   {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+  
+        { 'data' $values 
+          'events' [ { 'type' 'variable' 'tags' [ 'energyavail' ] 'value' $values } ] 
+
+          'globalParams' {
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+             {
+           'title' 'Download Energy Availabilities'
+           'type' 'display'
+           'cellHeight' 50
+           'options' { 'eventHandler' 'type=variable,tag=energyavail' }
+           'x' 0 'y' 16 'w' 4 'h' 1
+           'macro' <%
+
+                <'
+                    fileName = "EnergyAvail.csv";
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += {{{jsonHeader}}}.join(";") + "\r\n";
+        
+                    {{{jsonRow}}}.forEach(function(rowArray) {
+                    let row = rowArray.join(";");
+                    csvContent += row + "\r\n";
+                    }); 
+                    
+                    var dataUri = encodeURI(csvContent);
+
+
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                            
+                '>
+
+                {
+                    "jsonRow" $rows ->JSON
+                    "jsonHeader" $columns ->JSON
+                } TEMPLATE 
+
+                'download_script_js' STORE
+                
+
+                <'
+
+                    <button style='background-color: DodgerBlue;' onclick='{{download_script_js}}' >Download</button> 
+   
+                '>
+
+
+                {
+                    'download_script_js' $download_script_js
+                } TEMPLATE 
+
+                
+           %>
+       }
+
+
+    {
+      'type' 'tabular' 'x' 4 'y' 9 'w' 4 'h' 7
+      'title' 'Service Durations'
+      'options' { //'autoRefresh' 600
+      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
+      'showControls' true
+                        }
+      'macro' <%
+
+            NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thisyear' STORE //adjust 3 hrs for UTC time Turkey
+      $year 1 - 'last_year' STORE
+      [ $last_year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyear' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year $month $day $hour 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyeartoday' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year 12 31 23 59 59 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearend' STORE //adjust 3 hrs for UTC time Turkey
+
+
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
+
+
+$listOfTurbines SIZE 'numTurbines' STORE
+    [] 'turbinerows' STORE
+        [] 'totalrows' STORE 
+
+    1 $numTurbines <% 'turbine' STORE
+    [ $turbine ] 'turbinerow' STORE 
+    [ $turbine ] 'totalrow' STORE 
+
+     { 'token' $myreadtoken 
+      'class' 'PLC_STATUS' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 h
+      }
+       FETCH [ SWAP bucketizer.last 0 1 h 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT   'status' STORE 
+        [ $status bucketizer.count '+03:00' ] @warp/bucketByMonth  0 GET  'totaltime' STORE 
+        //[ $status bucketizer.count NOW 'P1M' 0 ] BUCKETIZE.CALENDAR VALUES FLATTEN 'totaltime' STORE //bucketize each month
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS_REPORT' 
+      'labels' { 'plant' $plant  'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH  'reports' STORE
+       
+   [ $reports  []  { 'service_type' 'Service' } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth  'buyservice' STORE
+   [ $reports  []  { 'service_type' 'Error' } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth  'buyerror' STORE
+          
+       $totaltime TICKLIST  'monthindex' STORE // index of months 
+       0 $monthindex SIZE 1 - <% 
+        'i' STORE
+       $monthindex $i GET  'index' STORE
+       0 'totalmonth' STORE
+
+      <% $buyerror [] == %> <% 0 'errormonth' STORE %> 
+      <%  
+      $buyerror $index 1 TIMECLIP NONEMPTY  <% LABELS 'tduration' GET %> FOREACH  STACKTOLIST  'errorlist' STORE 
+      <% $errorlist [] ==  %> <% 0  'errormonth' STORE %>
+      <% 0 'errormonth' STORE 0 $errorlist SIZE 1 - <% 'e' STORE $errormonth $errorlist $e GET TODOUBLE +  'errormonth' STORE  %> FOR %> IFTE  
+      %> IFTE  //if no man error 
+
+      <% $buyservice [] == %> <% 0 'servicemonth' STORE %> 
+      <%  
+      $buyservice $index 1 TIMECLIP NONEMPTY  <% LABELS 'tduration' GET %> FOREACH  STACKTOLIST  'servicelist' STORE 
+      <% $servicelist [] ==  %> <% 0  'servicemonth' STORE %>
+      <% 0 'servicemonth' STORE 0 $servicelist SIZE 1 - <% 'e' STORE $servicemonth $servicelist $e GET TODOUBLE +  'servicemonth' STORE  %> FOR %> IFTE  
+      %> IFTE  //if no man error 
+
+      $totalmonth $errormonth + $servicemonth + TOLONG HUMANDURATION '.' SPLIT 0 GET STACKTOLIST 'avails' STORE
+      $turbinerow $avails APPEND  'turbinerow' STORE
+      
+      $totalmonth $errormonth + TOLONG STACKTOLIST 'totavails' STORE
+      $totalrow $totavails APPEND  'totalrow' STORE
+
+       %> FOR  
+      
+        
+        $turbinerows [ $turbinerow ] APPEND 'turbinerows' STORE
+        $totalrows [ $totalrow ] APPEND 'totalrows' STORE
+
+   
+
+       %> FOR // for all turbine list
+  
+
+  [ 'Turbine' ] 'columns' STORE
+   
+   1 $turbinerows 0 GET SIZE 1 - <% 't' STORE
+     $columns $t + 'columns' STORE
+    %> FOR
+
+      // calculate general availability and add as a row.
+[] 'total' STORE
+ 1 $turbinerows 0 GET SIZE <% DROP $total [ 0 ] APPEND 'total' STORE %> FOR
+
+$total ->VEC 'totalvec' STORE
+
+0 $totalrows SIZE 1 - <% 'i' STORE 
+
+  <% $totalrows $i GET  SIZE $total SIZE == %>
+  <%  $totalrows $i GET ->VEC $totalvec + 'totalvec' STORE %> 
+  <% $totalrows $i GET [ 1 -1 ] SUBLIST REVERSE [ 0 0  $totalrows $i GET 0 GET ] APPEND REVERSE ->VEC $totalvec + 'totalvec' STORE %> IFTE
+
+ 
+ %> FOR 
+ $totalvec VEC-> <% TOLONG HUMANDURATION '.' SPLIT 0 GET %> FOREACH STACKTOLIST 'Total' 0 SET 'totalrow' STORE 
+
+ $turbinerows [ $totalrow ] APPEND 'turbinerows' STORE
+
+
+ //create rows for table
+ 
+  [] 'rows' STORE
+   0 $turbinerows SIZE 1 - <% 'j' STORE
+       <% $columns SIZE $turbinerows $j GET SIZE == %> 
+   <% $rows [ $turbinerows $j GET ] APPEND 'rows' STORE %>
+   <% $turbinerows $j GET [ 1 -1 ] SUBLIST REVERSE [ "0" "0"  $turbinerows $j GET 0 GET ] APPEND  REVERSE 'newrow' STORE
+   $rows [ $newrow ] APPEND 'rows' STORE  %> IFTE
+    
+    //$rows [ $turbinerows $j GET ] APPEND 'rows' STORE
+          %> FOR
+
+
+   {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+
+        { 'data' $values 
+                'events' [ { 'type' 'variable' 'tags' [ 'servicedur' ] 'value' $values } ]  
+
+          'globalParams' {
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+             {
+           'title' 'Download Service Durations'
+           'type' 'display'
+           'cellHeight' 50
+           'options' { 'eventHandler' 'type=variable,tag=servicedur' }
+           'x' 4 'y' 16 'w' 4 'h' 1
+           'macro' <%
+
+                <'
+                    fileName = "ServiceDurations.csv";
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += {{{jsonHeader}}}.join(";") + "\r\n";
+        
+                    {{{jsonRow}}}.forEach(function(rowArray) {
+                    let row = rowArray.join(";");
+                    csvContent += row + "\r\n";
+                    }); 
+                    
+                    var dataUri = encodeURI(csvContent);
+
+
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                            
+                '>
+
+                {
+                    "jsonRow" $rows ->JSON
+                    "jsonHeader" $columns ->JSON
+                } TEMPLATE 
+
+                'download_script_js' STORE
+                
+
+                <'
+
+                    <button style='background-color: DodgerBlue;' onclick='{{download_script_js}}' >Download</button> 
+   
+                '>
+
+
+                {
+                    'download_script_js' $download_script_js
+                } TEMPLATE 
+
+                
+           %>
+       }
+
+
+    {
+      'type' 'tabular' 'x' 8 'y' 9 'w' 4 'h' 7
+      'title' 'Maintenance Durations'
+      'options' { //'autoRefresh' 600
+      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
+      'showControls' true
+                        }
+      'macro' <%
+
+            NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thisyear' STORE //adjust 3 hrs for UTC time Turkey
+      $year 1 - 'last_year' STORE
+      [ $last_year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyear' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year $month $day $hour 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyeartoday' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year 12 31 23 59 59 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearend' STORE //adjust 3 hrs for UTC time Turkey
+
+
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
+
+
+$listOfTurbines SIZE 'numTurbines' STORE
+        [] 'turbinerows' STORE
+        [] 'totalrows' STORE 
+
+    1 $numTurbines <% 'turbine' STORE
+    [ $turbine ] 'turbinerow' STORE 
+    [ $turbine ] 'totalrow' STORE 
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 h
+      }
+       FETCH [ SWAP bucketizer.last 0 1 h 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT   'status' STORE 
+        [ $status bucketizer.count '+03:00' ] @warp/bucketByMonth  0 GET  'totaltime' STORE 
+        //[ $status bucketizer.count NOW 'P1M' 0 ] BUCKETIZE.CALENDAR VALUES FLATTEN 'totaltime' STORE //bucketize each month
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS_REPORT' 
+      'labels' { 'plant' $plant  'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH  'reports' STORE
+       
+   [ $reports  []  { 'service_type' 'Maintenance' } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth  'buyerror' STORE
+          
+       $totaltime TICKLIST  'monthindex' STORE // index of months 
+       0 $monthindex SIZE 1 - <% 
+        'i' STORE
+       $monthindex $i GET  'index' STORE
+       0 'totalmonth' STORE
+
+      <% $buyerror [] == %> <% 0 'errormonth' STORE %> 
+      <%  
+      $buyerror $index 1 TIMECLIP NONEMPTY  <% LABELS 'tduration' GET %> FOREACH  STACKTOLIST  'errorlist' STORE 
+      <% $errorlist [] ==  %> <% 0  'errormonth' STORE %>
+      <% 0 'errormonth' STORE 0 $errorlist SIZE 1 - <% 'e' STORE $errormonth $errorlist $e GET TODOUBLE +  'errormonth' STORE  %> FOR %> IFTE  
+      %> IFTE  //if no man error 
+
+      $totalmonth $errormonth + TOLONG HUMANDURATION '.' SPLIT 0 GET STACKTOLIST 'avails' STORE
+          $turbinerow $avails APPEND  'turbinerow' STORE
+      
+      $totalmonth $errormonth + TOLONG STACKTOLIST 'totavails' STORE
+      $totalrow $totavails APPEND  'totalrow' STORE
+
+       %> FOR  
+      
+        
+        $turbinerows [ $turbinerow ] APPEND 'turbinerows' STORE
+        $totalrows [ $totalrow ] APPEND 'totalrows' STORE
+
+   
+
+       %> FOR // for all turbine list
+  
+
+  [ 'Turbine' ] 'columns' STORE
+   
+   1 $turbinerows 0 GET SIZE 1 - <% 't' STORE
+     $columns $t + 'columns' STORE
+    %> FOR
+
+      // calculate general availability and add as a row.
+[] 'total' STORE
+ 1 $turbinerows 0 GET SIZE <% DROP $total [ 0 ] APPEND 'total' STORE %> FOR
+
+$total ->VEC 'totalvec' STORE
+
+0 $totalrows SIZE 1 - <% 'i' STORE 
+
+  <% $totalrows $i GET  SIZE $total SIZE == %>
+  <%  $totalrows $i GET ->VEC $totalvec + 'totalvec' STORE %> 
+  <% $totalrows $i GET [ 1 -1 ] SUBLIST REVERSE [ 0 0  $totalrows $i GET 0 GET ] APPEND REVERSE ->VEC $totalvec + 'totalvec' STORE %> IFTE
+
+ 
+ %> FOR 
+ $totalvec VEC-> <% TOLONG HUMANDURATION '.' SPLIT 0 GET %> FOREACH STACKTOLIST 'Total' 0 SET 'totalrow' STORE 
+
+ $turbinerows [ $totalrow ] APPEND 'turbinerows' STORE
+
+
+ //create rows for table
+ 
+  [] 'rows' STORE
+   0 $turbinerows SIZE 1 - <% 'j' STORE
+       <% $columns SIZE $turbinerows $j GET SIZE == %> 
+   <% $rows [ $turbinerows $j GET ] APPEND 'rows' STORE %>
+   <% $turbinerows $j GET [ 1 -1 ] SUBLIST REVERSE [ "0" "0"  $turbinerows $j GET 0 GET ] APPEND  REVERSE 'newrow' STORE
+   $rows [ $newrow ] APPEND 'rows' STORE  %> IFTE
+    
+    //$rows [ $turbinerows $j GET ] APPEND 'rows' STORE
+          %> FOR
+   {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+  
+        { 'data' $values 
+                        'events' [ { 'type' 'variable' 'tags' [ 'maindur' ] 'value' $values } ]  
+
+          'globalParams' {
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+         {
+           'title' 'Download Maintenance Durations'
+           'type' 'display'
+           'cellHeight' 50
+           'options' { 'eventHandler' 'type=variable,tag=maindur' }
+           'x' 8 'y' 16 'w' 4 'h' 1
+           'macro' <%
+
+                <'
+                    fileName = "MaintenanceDurations.csv";
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += {{{jsonHeader}}}.join(";") + "\r\n";
+        
+                    {{{jsonRow}}}.forEach(function(rowArray) {
+                    let row = rowArray.join(";");
+                    csvContent += row + "\r\n";
+                    }); 
+                    
+                    var dataUri = encodeURI(csvContent);
+
+
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                            
+                '>
+
+                {
+                    "jsonRow" $rows ->JSON
+                    "jsonHeader" $columns ->JSON
+                } TEMPLATE 
+
+                'download_script_js' STORE
+                
+
+                <'
+
+                    <button style='background-color: DodgerBlue;' onclick='{{download_script_js}}' >Download</button> 
+   
+                '>
+
+
+                {
+                    'download_script_js' $download_script_js
+                } TEMPLATE 
+
+                
+           %>
+       }
+
+
+
+    {
+      'type' 'tabular' 'x' 0 'y' 17 'w' 4 'h' 7
+      'title' 'Lost Power'
+      'options' { //'autoRefresh' 600
+      'eventHandler' 'type=variable,tag=(plant|startDate|endDate)'  // suscribe to events
+      'showControls' true
+                        }
+      'macro' <%
+
+            NOW ->TSELEMENTS 'now_stamp' STORE
+      $now_stamp 0 GET 'year' STORE // year now
+      $now_stamp 1 GET 'month' STORE // value of this month
+      $now_stamp 2 GET 'day' STORE // value of today
+      $now_stamp 3 GET 3 + 'hour' STORE //value of this hour and adjust for UTC time Turkey
+      [ $year $month $day 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'today' STORE //adjust 3 hrs for UTC time Turkey
+      [ $year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'thisyear' STORE //adjust 3 hrs for UTC time Turkey
+      $year 1 - 'last_year' STORE
+      [ $last_year 01 01 00 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyear' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year $month $day $hour 00 00 ]  TSELEMENTS-> 3 h - ISO8601 'lastyeartoday' STORE //adjust 3 hrs for UTC time Turkey
+      [ $last_year 12 31 23 59 59 ]  TSELEMENTS-> 3 h - ISO8601 'lastyearend' STORE //adjust 3 hrs for UTC time Turkey
+
+
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET 'listOfTurbines' STORE 
+
+
+$listOfTurbines SIZE 'numTurbines' STORE
+    [] 'turbinerows' STORE
+
+    1 $numTurbines <% 'turbine' STORE
+    [ $turbine ] 'turbinerow' STORE 
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS' 
+      'labels' { 'plant' $plant 'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 h
+      }
+       FETCH [ SWAP bucketizer.last 0 1 h 0 ] BUCKETIZE FILLPREVIOUS FILLNEXT   'status' STORE 
+        [ $status bucketizer.count '+03:00' ] @warp/bucketByMonth  0 GET  'totaltime' STORE 
+        //[ $status bucketizer.count NOW 'P1M' 0 ] BUCKETIZE.CALENDAR VALUES FLATTEN 'totaltime' STORE //bucketize each month
+        $totaltime LABELS 'manufacturer' GET  'manu' STORE
+
+    { 'token' $myreadtoken 
+      'class' 'PLC_STATUS_REPORT' 
+      'labels' { 'plant' $plant  'TurbineId' $turbine TOSTRING } 
+      'start' $thisyear
+      'end' $today
+      //'timespan' MAXLONG
+      //'sample' 0.5
+      'timestep' 1 m
+      }
+       FETCH  'reports' STORE
+       
+   [ $reports  []  { } filter.bylabels ] FILTER [ SWAP bucketizer.count '+03:00' ] @warp/bucketByMonth  'buyerror' STORE
+          
+       $totaltime TICKLIST  'monthindex' STORE // index of months 
+       0 $monthindex SIZE 1 - <% 
+        'i' STORE
+       $monthindex $i GET  'index' STORE
+       <% 'Sinovel' $manu == %> 
+       <% 30 24 * 1500 *  'totalmonth' STORE %> IFT
+      <% 'Vestas' $manu == %> 
+       <% 30 24 * 3450 * 'totalmonth' STORE %> IFT
+        <% 'Goldwind' $manu == %> 
+       <% 30 24 * 6000 * 'totalmonth' STORE %> IFT
+
+      <% $buyerror [] == %> <% 0 'errormonth' STORE %> 
+      <%  
+      $buyerror $index 1 TIMECLIP NONEMPTY  <% LABELS 'lost_power' GET 'k' SPLIT 0 GET TODOUBLE %> FOREACH  STACKTOLIST  'errorlist' STORE 
+      <% $errorlist [] ==  %> <% 0  'errormonth' STORE %>
+      <% 0 'errormonth' STORE 0 $errorlist SIZE 1 - <% 'e' STORE $errormonth $errorlist $e GET TODOUBLE +  'errormonth' STORE  %> FOR %> IFTE  
+      %> IFTE  //if no man error 
+
+      //$totalmonth  $errormonth -  TODOUBLE  $totalmonth /  100 * 100 * RINT 100 /  STACKTOLIST 'avails' STORE
+      //$turbinerow $avails APPEND  'turbinerow' STORE
+      $turbinerow [ $errormonth ] APPEND  'turbinerow' STORE
+
+       %> FOR  
+      
+        
+        $turbinerows [ $turbinerow ] APPEND 'turbinerows' STORE
+   
+
+       %> FOR // for all turbine list
+  
+
+  [ 'Turbine' ] 'columns' STORE
+   
+   1 $turbinerows 0 GET SIZE 1 - <% 't' STORE
+     $columns $t + 'columns' STORE
+    %> FOR
+  
+      // calculate general availability and add as a row.
+[] 'total' STORE
+ 1 $turbinerows 0 GET SIZE <% DROP $total [ 0 ] APPEND 'total' STORE %> FOR
+
+$total ->VEC 'totalvec' STORE
+
+0 $turbinerows SIZE 1 - <% 'i' STORE 
+
+  <% $turbinerows $i GET  SIZE $total SIZE == %>
+  <%  $turbinerows $i GET ->VEC $totalvec + 'totalvec' STORE %> 
+  <% $turbinerows $i GET [ 1 -1 ] SUBLIST REVERSE [ 0 0  $turbinerows $i GET 0 GET ] APPEND REVERSE ->VEC $totalvec + 'totalvec' STORE %> IFTE
+
+ 
+ %> FOR 
+ $totalvec VEC-> <% 100 * RINT 100 / %> FOREACH STACKTOLIST 'Total' 0 SET 'totalrow' STORE 
+
+ $turbinerows [ $totalrow ] APPEND 'turbinerows' STORE
+
+
+ //create rows for table
+ 
+  [] 'rows' STORE
+   0 $turbinerows SIZE 1 - <% 'j' STORE
+       <% $columns SIZE $turbinerows $j GET SIZE == %> 
+   <% $rows [ $turbinerows $j GET ] APPEND 'rows' STORE %>
+   <% $turbinerows $j GET [ 1 -1 ] SUBLIST REVERSE [ "0" "0"  $turbinerows $j GET 0 GET ] APPEND  REVERSE 'newrow' STORE
+   $rows [ $newrow ] APPEND 'rows' STORE  %> IFTE
+    
+    //$rows [ $turbinerows $j GET ] APPEND 'rows' STORE
+          %> FOR
+
+   {
+          'columns' $columns
+          'rows' $rows
+        } 
+        'values' STORE
+  
+        { 'data' $values
+        'events' [ { 'type' 'variable' 'tags' [ 'lostpwrresult' ] 'value' $values } ]  
+          'globalParams' {
+           // 'bgColor' 'Thistle'
+            //'fontColor' '#ffffff'
+    'tabular' {
+      'fixedWidth' true 
+      'sortable' true 
+      //'filterable' true 
+    }
+  }
+  } // data can also be a gts or a list thereof
+      %>
+    }
+
+           {
+           'title' 'Download Lost Power'
+           'type' 'display'
+           'cellHeight' 50
+           'options' { 'eventHandler' 'type=variable,tag=lostpwrresult' }
+           'x' 0 'y' 24 'w' 4 'h' 1
+           'macro' <%
+
+                <'
+                    fileName = "LostPower.csv";
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += {{{jsonHeader}}}.join(";") + "\r\n";
+        
+                    {{{jsonRow}}}.forEach(function(rowArray) {
+                    let row = rowArray.join(";");
+                    csvContent += row + "\r\n";
+                    }); 
+                    
+                    var dataUri = encodeURI(csvContent);
+
+
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                            
+                '>
+
+                {
+                    "jsonRow" $rows ->JSON
+                    "jsonHeader" $columns ->JSON
+                } TEMPLATE 
+
+                'download_script_js' STORE
+                
+
+                <'
+
+                    <button style='background-color: DodgerBlue;' onclick='{{download_script_js}}' >Download</button> 
+   
+                '>
+
+
+                {
+                    'download_script_js' $download_script_js
+                } TEMPLATE 
+
+                
+           %>
+       }
+
+
+	
+  ]
+
+
+}
+

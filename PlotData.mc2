@@ -1,8 +1,8 @@
-// @endpoint http://172.20.13.163:8888/api/v0/exec
+// @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
 // @theme light
 {
 
- 
+  'title' 'Data Plot' 
   'cellHeight' 100   
   'options' { 
     'showErrors' true
@@ -140,7 +140,8 @@
       'options' { 'eventHandler' 'type=(variable),tag=(endDate|startDate|TurbineId|plant|input|bucketsize|valuetype)'
                   // suscribe to events
         //'tabular' { 'fixedWidth' true }
-        'autoRefresh' 60
+       // 'autoRefresh' 60
+        'responsive' true
         'showRangeSelector' true
         'showLegend' true
       }
@@ -289,3 +290,8 @@ $row +
 
 
 }
+
+
+
+
+

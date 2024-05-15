@@ -1,7 +1,7 @@
-// @endpoint http://172.20.13.163:8888/api/v0/exec
-// @theme light
+// @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
+// @theme dark-blue
 {
-
+  'title' 'Turbine Efficiency Comparison'
   'type' 'flex'
   'cellHeight' 80   
   'options' { 
@@ -41,7 +41,7 @@
         'x' 0 'y' 0 'w' 1 'h' 1                
         'type' 'input:list'                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
             {                        
                 'data' $listOfPlants                        
                 'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
@@ -106,7 +106,7 @@
             'bgColor' 'DodgerBlue'
                 
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
             {                        
                 'data' $listOfPlants                        
                 'globalParams' { 'input' { 'value' $plant2 } } // the initial selected value coming from global vars                        

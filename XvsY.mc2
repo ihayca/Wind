@@ -1,12 +1,14 @@
-// @endpoint http://172.20.13.163:8888/api/v0/exec
-// @theme light
+// @endpoint https://resverianaliz.aydemyenilenebilir.com.tr:8889/api/v0/exec
+// @theme dark-blue
 {
 
   //'type' 'flex'
+  'title' 'X vs Y'
   'cellHeight' 80   
   'options' { 
       'scheme' 'CHARTANA'
-            'timeZone' 'Europe/Istanbul'    
+            'timeZone' 'Europe/Istanbul' 
+
          }
 		 
   'vars' {
@@ -30,7 +32,7 @@
       'value3' '0'
       'value4' '0'
       
-      'startDate' [ NOW 7 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
+      'startDate' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP //1658308294000000   
       'endDate' NOW //1658913094000000   //604800000000
       'myreadtoken' '4vM.a2aMxhl2qCB88Gutar8jXe4R4cqp.QaYYHtumjJg9DCHgXXY1_qIoBhzeh6PIdfX9KLtgeK1O0YHXcr0qA2ZPQrLAurl_PbQAkNjvy3WNq4fNEv434rOXWMsGq55X4qYtTOCtx53bqFwUXsRr6.B3sKF1YE1At8iEE2RyxC9RYOnS7UT4F'
 
@@ -46,7 +48,7 @@
         'x' 0 'y' 0 'w' 2 'h' 1                
         'type' 'input:list'                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
+            [ $myreadtoken '~.*' { 'type' 'Wind' } ] FINDSETS STACKTOLIST 1 GET 'plant' GET LSORT 'listOfPlants' STORE                    
             {                        
                 'data' $listOfPlants                        
                 'globalParams' { 'input' { 'value' $plant } } // the initial selected value coming from global vars                        
@@ -58,9 +60,11 @@
 	{                
         'title' 'Turbine'                
         'x' 0 'y' 1 'w' 2 'h' 1              
-        'type' 'input:list'                
+        'type' 'input:list' 
+        'options' { 'eventHandler' 'type=(variable),tag=(plant)' }            
         'macro' <%                     
-           [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE                  
+            [ $myreadtoken '~.*' { 'plant' $plant } ] FINDSETS STACKTOLIST 1 GET 'TurbineId' GET <% TOLONG %> SORTBY 'listOfTurbines' STORE               
+                        
             {                        
                 'data' $listOfTurbines                        
                 'globalParams' { 'input' { 'value' $TurbineId } } // the initial selected value coming from global vars                        
@@ -72,9 +76,10 @@
     	{                
         'title' 'X-Axis'                
         'x' 0 'y' 2 'w' 2 'h' 1              
-        'type' 'input:list'                
+        'type' 'input:list'  
+         'options' { 'eventHandler' 'type=(variable),tag=(plant|TurbineId)' }                
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            [ $myreadtoken '~.*' { 'type' 'Wind' 'TurbineId' $TurbineId 'plant' $plant } ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                 
             {                        
                 'data' $listOfVariables                        
                 'globalParams' { 'input' { 'value' $VariableId } } // the initial selected value coming from global vars                        
@@ -88,9 +93,10 @@
       	{                
         'title' 'Y-Axis'                
         'x' 0 'y' 3 'w' 2 'h' 1              
-        'type' 'input:list'                
+        'type' 'input:list'      
+        'options' { 'eventHandler' 'type=(variable),tag=(plant|TurbineId)' }           
         'macro' <%                     
-            [ $myreadtoken '~.*' {} ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE                    
+            [ $myreadtoken '~.*' { 'type' 'Wind' 'TurbineId' $TurbineId 'plant' $plant } ] FINDSETS STACKTOLIST 0 GET LSORT 'listOfVariables' STORE               
             {                        
                 'data' $listOfVariables                        
                 'globalParams' { 'input' { 'value' $VariableId2 } } // the initial selected value coming from global vars                        
@@ -106,7 +112,8 @@
         'macro' <%                     
                               
             {                        
-                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP                      
+                'data' [ NOW 8 d - ISO8601 'T' SPLIT 0 GET '21:00:00Z' ] 'T' JOIN TOTIMESTAMP 
+                'globalParams' { 'input' { 'showButton' true  } }                      
                 'events' [
     { 'type' 'variable' 'tags' [ 'startDate' 'plant' 'TurbineId' ] 'selector' 'startDate' }
     ]                    
@@ -121,7 +128,8 @@
         'macro' <%                     
                               
             {                        
-               'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP                    
+               'data' [ NOW ISO8601 'T' SPLIT 0 GET '20:59:59Z' ] 'T' JOIN TOTIMESTAMP 
+               'globalParams' { 'input' { 'showButton' true  } }                        
                 'events' [
     { 'type' 'variable' 'tags' [ 'endDate' 'plant' 'TurbineId' ] 'selector' 'endDate' }
     ]                    
